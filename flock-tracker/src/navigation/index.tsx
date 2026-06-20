@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Text } from 'react-native';
 
 import { colors, font } from '../constants/theme';
@@ -17,7 +17,7 @@ import BirdDetailScreen from '../screens/BirdDetailScreen';
 import AddHealthScreen from '../screens/AddHealthScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
-const Stack = createStackNavigator<RootStackParamList>();
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const TAB_ICONS: Record<string, string> = {
   Home: '🏠',

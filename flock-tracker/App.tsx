@@ -1,8 +1,6 @@
-import 'react-native-gesture-handler';
 import React from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, Text, ScrollView } from 'react-native';
+import { Text, ScrollView } from 'react-native';
 import RootNavigator from './src/navigation';
 
 class ErrorBoundary extends React.Component<
@@ -34,11 +32,9 @@ class ErrorBoundary extends React.Component<
 export default function App() {
   return (
     <ErrorBoundary>
-      <GestureHandlerRootView style={{ flex: 1 }}>
-        <SafeAreaProvider>
-          <RootNavigator />
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
+      <SafeAreaProvider>
+        <RootNavigator />
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }
