@@ -8,7 +8,10 @@ import {
   TextInput,
   Modal,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
 import { generateId, toDateKey, addDaysToDate, formatDate, getHatchDaysLeft } from '../utils/helpers';
@@ -16,11 +19,15 @@ import { HatchBatch } from '../types';
 
 export default function HatchScreen() {
   const { hatchBatches, addHatchBatch, updateHatchBatch, deleteHatchBatch } = useStore();
+  const insets = useSafeAreaInsets();
   const [showModal, setShowModal] = useState(false);
   const [batchName, setBatchName] = useState('');
   const [eggsSet, setEggsSet] = useState('');
   const [breed, setBreed] = useState('');
   const [notes, setNotes] = useState('');
+  // Cross-platform replacement for Alert.prompt (iOS-only)
+  const [completingBatch, setCompletingBatch] = useState<HatchBatch | null>(null);
+  const [hatchedInput, setHatchedInput] = useState('');
 
   const incubating = hatchBatches.filter((b) => b.status === 'incubating');
   const completed = hatchBatches.filter((b) => b.status !== 'incubating');
@@ -70,23 +77,19 @@ export default function HatchScreen() {
   };
 
   const promptComplete = (batch: HatchBatch) => {
-    Alert.prompt(
-      'Hatch Complete!',
-      'How many chicks hatched?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Save',
-          onPress: (val: string | undefined) => {
-            const n = parseInt(val ?? '0');
-            if (!isNaN(n)) handleComplete(batch, n);
-          },
-        },
-      ],
-      'plain-text',
-      '',
-      'number-pad'
-    );
+    setHatchedInput('');
+    setCompletingBatch(batch);
+  };
+
+  const confirmHatched = () => {
+    const n = parseInt(hatchedInput.trim());
+    if (isNaN(n) || n < 0) {
+      Alert.alert('Invalid number', 'Please enter how many chicks hatched (0 or more).');
+      return;
+    }
+    if (completingBatch) handleComplete(completingBatch, n);
+    setCompletingBatch(null);
+    setHatchedInput('');
   };
 
   const renderBatch = (batch: HatchBatch) => {
@@ -176,7 +179,7 @@ export default function HatchScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>Hatching</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowModal(true)}>
           <Text style={styles.addBtnText}>+ New Batch</Text>
@@ -211,6 +214,42 @@ export default function HatchScreen() {
 
         <View style={{ height: spacing.xxxl }} />
       </ScrollView>
+
+      {/* Hatched count entry modal — cross-platform replacement for iOS-only Alert.prompt */}
+      <Modal visible={completingBatch !== null} animationType="fade" transparent>
+        <KeyboardAvoidingView
+          style={styles.overlayOuter}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.overlayCard}>
+            <Text style={styles.overlayTitle}>🐥 Hatch Complete!</Text>
+            <Text style={styles.overlaySub}>
+              How many chicks hatched from {completingBatch?.eggsSet ?? 0} eggs?
+            </Text>
+            <TextInput
+              style={styles.overlayInput}
+              placeholder="e.g. 10"
+              placeholderTextColor={colors.textMuted}
+              value={hatchedInput}
+              onChangeText={setHatchedInput}
+              keyboardType="number-pad"
+              autoFocus
+              maxLength={3}
+            />
+            <View style={styles.overlayBtns}>
+              <TouchableOpacity
+                style={styles.overlayCancelBtn}
+                onPress={() => { setCompletingBatch(null); setHatchedInput(''); }}
+              >
+                <Text style={styles.overlayCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.overlaySaveBtn} onPress={confirmHatched}>
+                <Text style={styles.overlaySaveText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       {/* New batch modal */}
       <Modal visible={showModal} animationType="slide" presentationStyle="pageSheet">
@@ -289,7 +328,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.md,
   },
   title: { fontSize: font.xxl, fontWeight: '800', color: colors.text },
@@ -413,4 +451,49 @@ const styles = StyleSheet.create({
     color: colors.text,
     backgroundColor: colors.surfaceElevated,
   },
+  overlayOuter: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  overlayCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.xxl,
+    width: '100%',
+  },
+  overlayTitle: { fontSize: font.xl, fontWeight: '800', color: colors.text, marginBottom: spacing.xs },
+  overlaySub: { fontSize: font.md, color: colors.textSecondary, marginBottom: spacing.lg, lineHeight: 22 },
+  overlayInput: {
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    fontSize: font.xxl,
+    fontWeight: '700',
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  overlayBtns: { flexDirection: 'row', gap: spacing.md },
+  overlayCancelBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.full,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  overlayCancelText: { fontSize: font.md, color: colors.textSecondary, fontWeight: '600' },
+  overlaySaveBtn: {
+    flex: 2,
+    backgroundColor: colors.secondary,
+    borderRadius: radius.full,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  overlaySaveText: { fontSize: font.md, color: '#fff', fontWeight: '800' },
 });

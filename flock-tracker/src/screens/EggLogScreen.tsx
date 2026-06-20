@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
 import {
@@ -19,6 +20,7 @@ import {
 
 export default function EggLogScreen() {
   const { eggLogs, birds, addEggLog, deleteEggLog } = useStore();
+  const insets = useSafeAreaInsets();
   const [selectedDate, setSelectedDate] = useState(toDateKey());
   const [inputCount, setInputCount] = useState('');
 
@@ -50,11 +52,11 @@ export default function EggLogScreen() {
     if (todayLog) deleteEggLog(todayLog.id);
   };
 
-  const maxCount = Math.max(...Object.values(logMap), activeHens, 1);
+  const maxCount = Object.values(logMap).reduce((m, v) => Math.max(m, v), Math.max(activeHens, 1));
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>Egg Log</Text>
       </View>
 
@@ -200,7 +202,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.md,
   },
   title: { fontSize: font.xxl, fontWeight: '800', color: colors.text },

@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useStore, FREE_BIRD_LIMIT_EXPORT } from '../store';
@@ -18,6 +19,7 @@ type Nav = StackNavigationProp<RootStackParamList>;
 
 export default function FlockScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { birds, eggLogs, isPremium } = useStore();
   const [showInactive, setShowInactive] = useState(false);
 
@@ -29,7 +31,7 @@ export default function FlockScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>My Flock</Text>
         <TouchableOpacity
           style={[styles.addBtn, atLimit && styles.addBtnDisabled]}
@@ -102,7 +104,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.md,
   },
   title: { fontSize: font.xxl, fontWeight: '800', color: colors.text },

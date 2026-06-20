@@ -27,11 +27,10 @@ export const useStore = create<AppState>()(
 
       addMatch: (match) =>
         set((state) => {
-          const updated = [match, ...state.matches];
-          if (!state.isPremium && updated.length > FREE_MATCH_LIMIT) {
-            return { matches: updated.slice(0, FREE_MATCH_LIMIT) };
+          if (!state.isPremium && state.matches.length >= FREE_MATCH_LIMIT) {
+            return state;
           }
-          return { matches: updated };
+          return { matches: [match, ...state.matches] };
         }),
 
       updateMatch: (match) =>

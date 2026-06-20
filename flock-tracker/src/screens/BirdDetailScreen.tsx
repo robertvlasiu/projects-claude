@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useStore } from '../store';
@@ -28,6 +29,7 @@ const HEALTH_LABELS: Record<HealthEventType, string> = {
 export default function BirdDetailScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteType>();
+  const insets = useSafeAreaInsets();
   const { birds, healthRecords, deleteHealthRecord } = useStore();
 
   const bird = birds.find((b) => b.id === route.params.birdId);
@@ -46,7 +48,7 @@ export default function BirdDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.back}>‹ Back</Text>
         </TouchableOpacity>
@@ -172,7 +174,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.md,
   },
   back: { fontSize: font.lg, color: colors.primary, fontWeight: '600' },

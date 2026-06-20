@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Modal,
   Vibration,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
 import { BUILT_IN_DRILLS } from '../constants/drills';
@@ -27,18 +28,23 @@ const CATEGORY_LABELS: Record<Category, string> = {
 
 export default function DrillsScreen() {
   const { addDrillSession } = useStore();
+  const insets = useSafeAreaInsets();
   const [category, setCategory] = useState<Category>('all');
   const [activeDrill, setActiveDrill] = useState<Drill | null>(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [running, setRunning] = useState(false);
   const [finished, setFinished] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Ref so interval closure always reads current drill without needing it in deps
+  const activeDrillRef = useRef<Drill | null>(null);
 
   const filtered = BUILT_IN_DRILLS.filter(
     (d) => category === 'all' || d.category === category
   );
 
   const startDrill = (drill: Drill) => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    activeDrillRef.current = drill;
     setActiveDrill(drill);
     setTimeLeft(drill.durationSeconds);
     setRunning(false);
@@ -49,30 +55,39 @@ export default function DrillsScreen() {
     setRunning((r) => !r);
   };
 
-  const resetTimer = () => {
+  const resetTimer = useCallback(() => {
     setRunning(false);
-    setTimeLeft(activeDrill?.durationSeconds ?? 0);
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setTimeLeft(activeDrillRef.current?.durationSeconds ?? 0);
     setFinished(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (!running) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       return;
     }
     intervalRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
           clearInterval(intervalRef.current!);
+          intervalRef.current = null;
           setRunning(false);
           setFinished(true);
           Vibration.vibrate([0, 300, 100, 300]);
-          if (activeDrill) {
+          const drill = activeDrillRef.current;
+          if (drill) {
             addDrillSession({
               id: generateId(),
               date: new Date().toISOString(),
-              drillName: activeDrill.name,
-              durationSeconds: activeDrill.durationSeconds,
+              drillName: drill.name,
+              durationSeconds: drill.durationSeconds,
             });
           }
           return 0;
@@ -81,9 +96,12 @@ export default function DrillsScreen() {
       });
     }, 1000);
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
-  }, [running]);
+  }, [running, addDrillSession]);
 
   const progress = activeDrill
     ? 1 - timeLeft / activeDrill.durationSeconds
@@ -91,7 +109,7 @@ export default function DrillsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>Drills</Text>
         <Text style={styles.subtitle}>{BUILT_IN_DRILLS.length} drills ready</Text>
       </View>
@@ -150,7 +168,7 @@ export default function DrillsScreen() {
         {activeDrill && (
           <View style={styles.modal}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => { resetTimer(); setActiveDrill(null); }}>
+              <TouchableOpacity onPress={() => { resetTimer(); activeDrillRef.current = null; setActiveDrill(null); }}>
                 <Text style={styles.modalClose}>✕ Close</Text>
               </TouchableOpacity>
             </View>
@@ -205,7 +223,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.md,
   },
   title: { fontSize: font.xxl, fontWeight: '800', color: colors.text },

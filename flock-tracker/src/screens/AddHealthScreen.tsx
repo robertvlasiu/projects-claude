@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useStore } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
@@ -28,6 +29,7 @@ const EVENT_TYPES: { value: HealthEventType; label: string; emoji: string; color
 export default function AddHealthScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteType>();
+  const insets = useSafeAreaInsets();
   const { birds, addHealthRecord } = useStore();
 
   const bird = birds.find((b) => b.id === route.params.birdId);
@@ -136,7 +138,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.lg,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,

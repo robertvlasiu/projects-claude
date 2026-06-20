@@ -11,6 +11,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
 import { generateId, toDateKey, formatDateShort, getEggStatsForPeriod } from '../utils/helpers';
@@ -29,6 +30,7 @@ const FEED_TYPES = [
 ];
 
 export default function FeedScreen() {
+  const insets = useSafeAreaInsets();
   const { feedLogs, eggLogs, birds, addFeedLog, deleteFeedLog } = useStore();
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -83,7 +85,7 @@ export default function FeedScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>Feed Tracker</Text>
         <TouchableOpacity style={styles.addBtn} onPress={() => setShowAddModal(true)}>
           <Text style={styles.addBtnText}>+ Log Feed</Text>
@@ -246,7 +248,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.md,
   },
   title: { fontSize: font.xxl, fontWeight: '800', color: colors.text },

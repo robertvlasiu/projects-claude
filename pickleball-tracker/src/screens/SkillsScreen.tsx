@@ -6,6 +6,7 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
 import SkillBar from '../components/SkillBar';
@@ -33,6 +34,7 @@ const SHOT_TIPS: Record<keyof ShotRatings, string> = {
 type Period = '5' | '10' | 'all';
 
 export default function SkillsScreen() {
+  const insets = useSafeAreaInsets();
   const { matches } = useStore();
   const [period, setPeriod] = useState<Period>('10');
 
@@ -54,7 +56,7 @@ export default function SkillsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>Shot Skills</Text>
         <View style={styles.periodRow}>
           {(['5', '10', 'all'] as Period[]).map((p) => (
@@ -135,7 +137,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.md,
   },
   title: { fontSize: font.xxl, fontWeight: '800', color: colors.text, marginBottom: spacing.md },

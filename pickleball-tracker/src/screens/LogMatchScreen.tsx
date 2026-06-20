@@ -11,7 +11,8 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { useStore } from '../store';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useStore, FREE_LIMIT } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
 import { generateId } from '../utils/helpers';
 import { Match, ShotRatings, RootStackParamList } from '../types';
@@ -33,7 +34,8 @@ const defaultShots: ShotRatings = { serve: 3, return: 3, dink: 3, drop: 3, drive
 export default function LogMatchScreen() {
   const navigation = useNavigation();
   const route = useRoute<RouteType>();
-  const { matches, addMatch, updateMatch, deleteMatch } = useStore();
+  const insets = useSafeAreaInsets();
+  const { matches, isPremium, addMatch, updateMatch, deleteMatch } = useStore();
 
   const editMatch = route.params?.matchId
     ? matches.find((m) => m.id === route.params.matchId)
@@ -80,6 +82,14 @@ export default function LogMatchScreen() {
     if (editMatch) {
       updateMatch(match);
     } else {
+      if (!isPremium && matches.length >= FREE_LIMIT) {
+        Alert.alert(
+          'Match limit reached',
+          `Free accounts store up to ${FREE_LIMIT} matches. Upgrade to Premium to log unlimited matches.`,
+          [{ text: 'OK' }]
+        );
+        return;
+      }
       addMatch(match);
     }
     navigation.goBack();
@@ -104,7 +114,7 @@ export default function LogMatchScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={styles.navBar}>
+      <View style={[styles.navBar, { paddingTop: insets.top + spacing.md }]}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.cancel}>Cancel</Text>
         </TouchableOpacity>
@@ -188,31 +198,21 @@ export default function LogMatchScreen() {
               />
             </View>
           </View>
-          {myScore && oppScore && (
-            <View
-              style={[
-                styles.resultBadge,
-                {
-                  backgroundColor:
-                    parseInt(myScore) > parseInt(oppScore)
-                      ? colors.winLight
-                      : colors.lossLight,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.resultText,
-                  {
-                    color:
-                      parseInt(myScore) > parseInt(oppScore) ? colors.win : colors.loss,
-                  },
-                ]}
-              >
-                {parseInt(myScore) > parseInt(oppScore) ? '🏆 You won!' : '💪 Keep grinding'}
-              </Text>
-            </View>
-          )}
+          {(() => {
+            const my = parseInt(myScore);
+            const opp = parseInt(oppScore);
+            if (!isNaN(my) && !isNaN(opp)) {
+              const won = my > opp;
+              return (
+                <View style={[styles.resultBadge, { backgroundColor: won ? colors.winLight : colors.lossLight }]}>
+                  <Text style={[styles.resultText, { color: won ? colors.win : colors.loss }]}>
+                    {won ? '🏆 You won!' : '💪 Keep grinding'}
+                  </Text>
+                </View>
+              );
+            }
+            return null;
+          })()}
         </View>
 
         {/* Location */}
@@ -292,7 +292,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.lg,
     backgroundColor: colors.background,
     borderBottomWidth: 1,

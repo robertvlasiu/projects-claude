@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useStore, FREE_LIMIT } from '../store';
@@ -19,6 +20,7 @@ type FilterType = 'all' | 'wins' | 'losses';
 
 export default function MatchesScreen() {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { matches, isPremium } = useStore();
   const [filter, setFilter] = useState<FilterType>('all');
 
@@ -30,7 +32,7 @@ export default function MatchesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>Match History</Text>
         <TouchableOpacity
           style={styles.addBtn}
@@ -96,7 +98,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.lg,
   },
   title: { fontSize: font.xxl, fontWeight: '800', color: colors.text },

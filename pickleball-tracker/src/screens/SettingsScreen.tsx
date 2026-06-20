@@ -7,10 +7,12 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore, FREE_LIMIT } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const { matches, drillSessions, isPremium, setIsPremium } = useStore();
 
   const handleUpgrade = () => {
@@ -41,7 +43,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>Profile</Text>
       </View>
 
@@ -122,7 +124,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xl + 8,
     paddingBottom: spacing.lg,
   },
   title: { fontSize: font.xxl, fontWeight: '800', color: colors.text },
@@ -198,6 +199,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: spacing.lg,
+    minHeight: 52,
     gap: spacing.md,
   },
   menuRowBorder: {
