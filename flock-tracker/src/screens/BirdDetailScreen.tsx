@@ -9,14 +9,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
 import { getAge, formatDate } from '../utils/helpers';
 import { RootStackParamList, HealthEventType } from '../types';
 
 type RouteType = RouteProp<RootStackParamList, 'BirdDetail'>;
-type Nav = StackNavigationProp<RootStackParamList>;
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const HEALTH_LABELS: Record<HealthEventType, string> = {
   checkup: '✓ Checkup',

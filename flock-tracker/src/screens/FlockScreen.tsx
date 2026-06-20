@@ -8,14 +8,14 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore, FREE_BIRD_LIMIT_EXPORT } from '../store';
 import { colors, spacing, radius, font } from '../constants/theme';
 import BirdCard from '../components/BirdCard';
 import { RootStackParamList } from '../types';
 import { toDateKey } from '../utils/helpers';
 
-type Nav = StackNavigationProp<RootStackParamList>;
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export default function FlockScreen() {
   const navigation = useNavigation<Nav>();

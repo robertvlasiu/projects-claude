@@ -17,9 +17,7 @@ export default function StatCard({ label, value, subtitle, accent, color }: Prop
         {value}
       </Text>
       <Text style={[styles.label, accent && styles.labelAccent]}>{label}</Text>
-      {subtitle ? (
-        <Text style={styles.subtitle}>{subtitle}</Text>
-      ) : null}
+      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
     </View>
   );
 }
@@ -29,23 +27,29 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    padding: spacing.lg,
+    padding: spacing.md,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
-    ...shadow.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.md,
   },
   cardAccent: {
     backgroundColor: colors.primaryLight,
+    borderColor: colors.primaryMid,
   },
   value: {
     fontSize: font.xxl,
-    fontWeight: '700',
-    marginBottom: spacing.xs,
+    fontWeight: '800',
+    marginBottom: 3,
+    letterSpacing: -0.5,
   },
   label: {
-    fontSize: font.sm,
+    fontSize: font.xs,
     color: colors.textSecondary,
-    fontWeight: '500',
+    fontWeight: '600',
     textAlign: 'center',
+    letterSpacing: 0.2,
   },
   labelAccent: {
     color: colors.primaryDark,

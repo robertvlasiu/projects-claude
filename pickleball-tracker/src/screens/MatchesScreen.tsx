@@ -8,13 +8,13 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore, FREE_LIMIT } from '../store';
 import { colors, spacing, radius, font } from '../constants/theme';
 import MatchCard from '../components/MatchCard';
 import { RootStackParamList } from '../types';
 
-type Nav = StackNavigationProp<RootStackParamList>;
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 type FilterType = 'all' | 'wins' | 'losses';
 

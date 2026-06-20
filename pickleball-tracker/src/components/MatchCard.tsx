@@ -21,42 +21,34 @@ export default function MatchCard({ match, onPress }: Props) {
       <View style={[styles.indicator, { backgroundColor: isWin ? colors.win : colors.loss }]} />
       <View style={styles.body}>
         <View style={styles.top}>
-          <View>
+          <View style={styles.left}>
             <Text style={styles.opponent}>{match.opponentName}</Text>
-            <Text style={styles.meta}>
-              {match.gameType === 'doubles' && match.partnerName
-                ? `w/ ${match.partnerName} · `
-                : ''}
-              {match.location ?? 'Court'}
-            </Text>
+            {match.gameType === 'doubles' && match.partnerName ? (
+              <Text style={styles.meta}>w/ {match.partnerName}</Text>
+            ) : null}
+            <Text style={styles.location}>{match.location ?? 'Court'} · {formatDateShort(match.date)}</Text>
           </View>
           <View style={styles.right}>
+            <Text style={styles.score}>
+              {match.myScore}–{match.opponentScore}
+            </Text>
             <View style={[styles.badge, { backgroundColor: isWin ? colors.winLight : colors.lossLight }]}>
               <Text style={[styles.badgeText, { color: isWin ? colors.win : colors.loss }]}>
                 {isWin ? 'WIN' : 'LOSS'}
               </Text>
             </View>
-            <Text style={styles.score}>
-              {match.myScore} – {match.opponentScore}
-            </Text>
           </View>
         </View>
         <View style={styles.bottom}>
-          <Text style={styles.date}>{formatDateShort(match.date)}</Text>
           <View style={styles.shotRow}>
             {Object.entries(match.shots).map(([key, val]) => (
-              <View key={key} style={styles.shotDot}>
-                <View
-                  style={[
-                    styles.dot,
-                    {
-                      backgroundColor:
-                        colors.ratingColors[Math.round(val) - 1] ?? colors.textMuted,
-                      opacity: 0.85,
-                    },
-                  ]}
-                />
-              </View>
+              <View
+                key={key}
+                style={[
+                  styles.dot,
+                  { backgroundColor: colors.ratingColors[Math.round(val) - 1] ?? colors.textMuted },
+                ]}
+              />
             ))}
             <Text style={styles.avgLabel}>avg {avgShot.toFixed(1)}</Text>
           </View>
@@ -73,14 +65,16 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     marginBottom: spacing.sm,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.border,
     ...shadow.sm,
   },
   indicator: {
-    width: 4,
+    width: 5,
   },
   body: {
     flex: 1,
-    padding: spacing.md,
+    padding: spacing.lg,
   },
   top: {
     flexDirection: 'row',
@@ -88,19 +82,31 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: spacing.sm,
   },
+  left: { flex: 1, marginRight: spacing.md },
   opponent: {
     fontSize: font.md,
     fontWeight: '700',
     color: colors.text,
+    marginBottom: 2,
   },
   meta: {
     fontSize: font.xs,
+    color: colors.textSecondary,
+    marginBottom: 1,
+  },
+  location: {
+    fontSize: font.xs,
     color: colors.textMuted,
-    marginTop: 2,
   },
   right: {
     alignItems: 'flex-end',
-    gap: 4,
+    gap: 5,
+  },
+  score: {
+    fontSize: font.xl,
+    fontWeight: '800',
+    color: colors.text,
+    letterSpacing: -0.5,
   },
   badge: {
     borderRadius: radius.full,
@@ -109,40 +115,27 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: font.xs,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  score: {
-    fontSize: font.md,
-    fontWeight: '600',
-    color: colors.text,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
   bottom: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  date: {
-    fontSize: font.sm,
-    color: colors.textSecondary,
   },
   shotRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
-  },
-  shotDot: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
   },
   dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   avgLabel: {
     fontSize: font.xs,
     color: colors.textMuted,
-    marginLeft: 4,
+    marginLeft: 5,
+    fontWeight: '500',
   },
 });
