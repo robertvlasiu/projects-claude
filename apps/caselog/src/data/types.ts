@@ -27,6 +27,12 @@ export interface CaseProfile {
   label: string;
   childrenFirstNames: string[];
   otherPartyName?: string;
+  /**
+   * Default share of a shared expense the OTHER party is responsible for, as a
+   * percentage 0–100. Default 50 (an even split). Used to derive how much they
+   * owe when the user pays a shared cost. Per-expense overrides win.
+   */
+  otherPartySharePct: number;
   createdAt: string; // ISO, non-editable
 }
 
@@ -37,7 +43,27 @@ export interface Attachment {
   caption?: string;
 }
 
-export interface IncidentEntry {
+/**
+ * Tamper-evidence fields shared by every logged entry.
+ *
+ * `createdAt` is stamped once at save and is never user-editable. `prevHash`
+ * and `hash` form a hash-chain across a section's entries (ordered by
+ * createdAt): each row's hash is derived from its own immutable id+createdAt
+ * plus the previous row's hash, so deleting or reordering rows breaks the
+ * chain and is detectable. `editedAt` records the last time editable fields
+ * were changed; we never silently mutate.
+ */
+export interface ChainedEntry {
+  createdAt: string; // ISO — when logged (NOT editable; credibility anchor)
+  /** Hash of the previous entry in the chain ("" for the first). */
+  prevHash: string;
+  /** Hash of this entry: derived from prevHash + id + createdAt. */
+  hash: string;
+  /** ISO timestamp of the last edit to editable fields, if any. */
+  editedAt?: string;
+}
+
+export interface IncidentEntry extends ChainedEntry {
   id: string;
   caseId: string;
   category: IncidentCategory;
@@ -47,25 +73,31 @@ export interface IncidentEntry {
   details: string;
   attachments: Attachment[];
   occurredAt: string; // ISO — when it happened (editable)
-  createdAt: string; // ISO — when logged (NOT editable; credibility anchor)
 }
 
 export type ExpenseSplit = "i_paid" | "they_paid" | "shared";
 
-export interface Expense {
+export interface Expense extends ChainedEntry {
   id: string;
   caseId: string;
   description: string;
   amountCents: number;
   split: ExpenseSplit;
-  /** What the other party owes for this item, in cents (derived/entered). */
+  /**
+   * Optional per-expense override of the other party's share %, 0–100. When
+   * undefined the case-level default (otherPartySharePct) is used.
+   */
+  sharePctOverride?: number;
+  /**
+   * Net effect on the running balance, in cents. Positive = the other party
+   * owes the user; negative = the user owes the other party. Derived at save.
+   */
   owedToMeCents: number;
   attachments: Attachment[];
   occurredAt: string; // ISO
-  createdAt: string; // ISO, non-editable
 }
 
-export interface ExchangeEvent {
+export interface ExchangeEvent extends ChainedEntry {
   id: string;
   caseId: string;
   scheduledAt: string; // ISO
@@ -73,5 +105,4 @@ export interface ExchangeEvent {
   actualAt?: string | null;
   occurred: boolean;
   note?: string;
-  createdAt: string; // ISO, non-editable
 }
