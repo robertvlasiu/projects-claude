@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -13,7 +16,13 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { CompositeNavigationProp } from '@react-navigation/native';
 import { useStore } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
-import { toDateKey, getEggStatsForPeriod, formatDateShort, getEggStreak } from '../utils/helpers';
+import {
+  toDateKey,
+  getEggStatsForPeriod,
+  formatDateShort,
+  getEggStreak,
+  generateId,
+} from '../utils/helpers';
 import { RootStackParamList, RootTabParamList } from '../types';
 
 type Nav = CompositeNavigationProp<
@@ -21,10 +30,13 @@ type Nav = CompositeNavigationProp<
   BottomTabNavigationProp<RootTabParamList>
 >;
 
+const QUICK_COUNTS = [1, 2, 3, 4, 5, 6, 8, 10, 12];
+
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
-  const { birds, eggLogs, healthRecords, hatchBatches, feedLogs, isPremium } = useStore();
+  const { birds, eggLogs, healthRecords, hatchBatches, feedLogs, isPremium, addEggLog, deleteEggLog } = useStore();
+  const [customInput, setCustomInput] = useState('');
 
   const today = toDateKey();
   const todayLog = eggLogs.find((l) => l.date === today);
@@ -33,182 +45,167 @@ export default function HomeScreen() {
 
   const activeHens = birds.filter((b) => b.isActive && b.sex === 'hen').length;
   const activeBirds = birds.filter((b) => b.isActive).length;
-
   const stats7 = getEggStatsForPeriod(eggLogs, 7);
-  const stats30 = getEggStatsForPeriod(eggLogs, 30);
 
-  const recentHealth = healthRecords.slice(0, 3);
+  const recentHealth = healthRecords.slice(0, 2);
   const activeIncubating = hatchBatches.filter((b) => b.status === 'incubating');
 
-  const layingRate =
-    activeHens > 0 && stats7.total > 0
-      ? Math.round((stats7.daily / activeHens) * 100)
-      : 0;
+  const logEggs = (count: number) => {
+    addEggLog({ id: todayLog?.id ?? generateId(), date: today, count });
+    setCustomInput('');
+  };
 
-  const actions = [
-    {
-      emoji: '🥚',
-      title: 'Log Eggs',
-      sub: todayLog ? `${todayCount} collected today ✓` : 'Not logged yet',
-      accentBg: todayLog ? '#D1FAE5' : colors.primaryLight,
-      accentText: todayLog ? colors.secondary : colors.primaryDark,
-      done: !!todayLog,
-      onPress: () => navigation.navigate('Eggs'),
-    },
+  const handleCustomLog = () => {
+    const n = parseInt(customInput);
+    if (!isNaN(n) && n >= 0) logEggs(n);
+  };
+
+  const navActions = [
     {
       emoji: '🐔',
-      title: 'Add Bird',
-      sub: activeBirds > 0 ? `${activeBirds} in your flock` : 'Get started here',
-      accentBg: colors.primaryLight,
-      accentText: colors.primaryDark,
-      done: false,
+      label: 'Add Bird',
+      sub: `${activeBirds} in flock`,
       onPress: () => navigation.navigate('AddBird', {}),
     },
     {
       emoji: '🐣',
-      title: 'New Hatch',
-      sub: activeIncubating.length > 0
-        ? `${activeIncubating.length} batch${activeIncubating.length !== 1 ? 'es' : ''} incubating`
-        : 'Start incubating',
-      accentBg: '#FEF9C3',
-      accentText: '#92400E',
-      done: false,
+      label: 'New Hatch',
+      sub: activeIncubating.length > 0 ? `${activeIncubating.length} active` : 'Start batch',
       onPress: () => navigation.navigate('Hatch'),
     },
     {
       emoji: '🌾',
-      title: 'Log Feed',
-      sub: feedLogs.length > 0
-        ? `Last: ${formatDateShort(feedLogs[0].date)}`
-        : 'Track your costs',
-      accentBg: colors.secondaryLight,
-      accentText: colors.secondaryDark,
-      done: false,
+      label: 'Log Feed',
+      sub: feedLogs.length > 0 ? formatDateShort(feedLogs[0].date) : 'Track costs',
       onPress: () => navigation.navigate('Feed'),
     },
     {
       emoji: '💊',
-      title: 'Health Record',
-      sub: recentHealth.length > 0
-        ? `Last: ${formatDateShort(recentHealth[0].date)}`
-        : 'All looking good',
-      accentBg: '#EDE9FE',
-      accentText: '#5B21B6',
-      done: false,
+      label: 'Health',
+      sub: recentHealth.length > 0 ? formatDateShort(recentHealth[0].date) : 'All good',
       onPress: () => navigation.navigate('Flock'),
-    },
-    {
-      emoji: isPremium ? '⭐' : '🔓',
-      title: 'Settings',
-      sub: isPremium ? 'Premium active' : 'Upgrade available',
-      accentBg: isPremium ? colors.primaryLight : '#F1F5F9',
-      accentText: isPremium ? colors.primaryDark : colors.textSecondary,
-      done: false,
-      onPress: () => navigation.navigate('Settings'),
     },
   ];
 
   return (
-    <View style={styles.container}>
-      {/* Amber header band */}
-      <View style={[styles.headerBand, { paddingTop: insets.top + spacing.md }]}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.greeting}>Good morning 🌅</Text>
-            <Text style={styles.title}>Your Flock</Text>
-          </View>
-          <TouchableOpacity
-            style={styles.settingsBtn}
-            onPress={() => navigation.navigate('Settings')}
-          >
-            <Text style={styles.settingsBtnText}>⚙️</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Egg hero */}
-        <TouchableOpacity
-          style={styles.heroCard}
-          onPress={() => navigation.navigate('Eggs')}
-          activeOpacity={0.9}
-        >
-          <View style={styles.heroLeft}>
-            <Text style={styles.heroEmoji}>🥚</Text>
-            <View>
-              <Text style={styles.heroLabel}>Today's Eggs</Text>
-              <Text style={styles.heroCount}>{todayCount}</Text>
-              <Text style={styles.heroSub}>
-                {activeHens} hen{activeHens !== 1 ? 's' : ''} · {layingRate}% laying
-              </Text>
-            </View>
-          </View>
-          <View style={styles.heroRight}>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      {/* Compact amber header */}
+      <View style={[styles.header, { paddingTop: insets.top + spacing.sm }]}>
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>Your Flock</Text>
+          <View style={styles.headerRight}>
             {streak > 0 && (
-              <View style={styles.streakBadge}>
-                <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
+              <View style={styles.streakChip}>
+                <Text style={styles.streakChipText}>🔥 {streak}d</Text>
               </View>
             )}
-            <Text style={styles.heroPeriodLabel}>7-day avg</Text>
-            <Text style={styles.heroAvg}>{stats7.daily}/day</Text>
-            <Text style={styles.heroPeriodLabel}>30-day total</Text>
-            <Text style={styles.heroTotal}>{stats30.total}</Text>
+            <TouchableOpacity
+              style={styles.gearBtn}
+              onPress={() => navigation.navigate('Settings')}
+            >
+              <Text style={styles.gearBtnText}>⚙️</Text>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
+
+        {/* Compact stats bar */}
+        <View style={styles.statsBar}>
+          <View style={styles.statItem}>
+            <Text style={styles.statBig}>{todayCount}</Text>
+            <Text style={styles.statLabel}>Today</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statBig}>{stats7.daily}</Text>
+            <Text style={styles.statLabel}>7d avg</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statBig}>{activeBirds}</Text>
+            <Text style={styles.statLabel}>Birds</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statBig}>{activeHens}</Text>
+            <Text style={styles.statLabel}>Hens</Text>
+          </View>
+        </View>
       </View>
 
+      {/* Inline egg logger — always visible, never navigates */}
+      <View style={styles.loggerCard}>
+        <View style={styles.loggerHeader}>
+          <Text style={styles.loggerTitle}>
+            {todayLog
+              ? `✓  ${todayCount} egg${todayCount !== 1 ? 's' : ''} logged today`
+              : 'Log today\'s eggs'}
+          </Text>
+          {todayLog && (
+            <TouchableOpacity onPress={() => deleteEggLog(todayLog.id)}>
+              <Text style={styles.clearLink}>Clear</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <View style={styles.quickRow}>
+          {QUICK_COUNTS.map((n) => (
+            <TouchableOpacity
+              key={n}
+              style={[styles.numBtn, todayLog?.count === n && styles.numBtnActive]}
+              onPress={() => logEggs(n)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.numBtnText, todayLog?.count === n && styles.numBtnTextActive]}>
+                {n}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          <View style={styles.customPair}>
+            <TextInput
+              style={styles.customInput}
+              value={customInput}
+              onChangeText={setCustomInput}
+              keyboardType="number-pad"
+              placeholder="…"
+              placeholderTextColor={colors.textMuted}
+              maxLength={3}
+              returnKeyType="done"
+              onSubmitEditing={handleCustomLog}
+            />
+            <TouchableOpacity style={styles.customBtn} onPress={handleCustomLog}>
+              <Text style={styles.customBtnText}>✓</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      {/* Scrollable remainder */}
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
-        {/* Quick Actions */}
+        {/* 2×2 navigation actions */}
         <Text style={styles.sectionLabel}>QUICK ACTIONS</Text>
         <View style={styles.actionsGrid}>
-          {actions.map((a) => (
+          {navActions.map((a) => (
             <TouchableOpacity
-              key={a.title}
+              key={a.label}
               style={styles.actionCard}
               onPress={a.onPress}
               activeOpacity={0.75}
             >
-              <View style={[styles.actionIconBox, { backgroundColor: a.accentBg }]}>
-                <Text style={styles.actionEmoji}>{a.emoji}</Text>
-              </View>
-              <Text style={styles.actionTitle}>{a.title}</Text>
-              <Text style={[styles.actionSub, { color: a.done ? colors.secondary : colors.textMuted }]}>
-                {a.sub}
-              </Text>
+              <Text style={styles.actionEmoji}>{a.emoji}</Text>
+              <Text style={styles.actionLabel}>{a.label}</Text>
+              <Text style={styles.actionSub}>{a.sub}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Flock at-a-glance row */}
-        {activeBirds > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>FLOCK</Text>
-            <TouchableOpacity
-              style={styles.flockRow}
-              onPress={() => navigation.navigate('Flock')}
-              activeOpacity={0.8}
-            >
-              {[
-                { label: 'Active Birds', value: activeBirds, emoji: '🐔' },
-                { label: 'Hens', value: activeHens, emoji: '🥚' },
-                { label: 'Roosters', value: birds.filter(b => b.isActive && b.sex === 'rooster').length, emoji: '🐓' },
-              ].map((s, i, arr) => (
-                <View
-                  key={s.label}
-                  style={[styles.flockStat, i < arr.length - 1 && styles.flockStatBorder]}
-                >
-                  <Text style={styles.flockStatEmoji}>{s.emoji}</Text>
-                  <Text style={styles.flockStatValue}>{s.value}</Text>
-                  <Text style={styles.flockStatLabel}>{s.label}</Text>
-                </View>
-              ))}
-            </TouchableOpacity>
-          </>
-        )}
-
-        {/* Active incubations */}
+        {/* Active incubation batches */}
         {activeIncubating.length > 0 && (
           <>
             <Text style={styles.sectionLabel}>INCUBATING</Text>
@@ -221,21 +218,18 @@ export default function HomeScreen() {
               const progress = Math.min(elapsed / totalDays, 1);
               const daysLeft = Math.max(0, Math.ceil((expected.getTime() - now.getTime()) / 86400000));
               const dayNum = Math.min(Math.ceil(elapsed), 21);
-
               return (
                 <TouchableOpacity
                   key={batch.id}
-                  style={styles.hatchCard}
+                  style={styles.batchCard}
                   onPress={() => navigation.navigate('Hatch')}
                   activeOpacity={0.8}
                 >
-                  <View style={styles.hatchTop}>
-                    <Text style={styles.hatchName}>{batch.name}</Text>
-                    <View style={styles.daysLeftBadge}>
-                      <Text style={styles.daysLeftText}>Day {dayNum} · {daysLeft}d left</Text>
-                    </View>
+                  <View style={styles.batchTop}>
+                    <Text style={styles.batchName}>{batch.name}</Text>
+                    <Text style={styles.batchBadge}>Day {dayNum} · {daysLeft}d left</Text>
                   </View>
-                  <Text style={styles.hatchMeta}>
+                  <Text style={styles.batchMeta}>
                     {batch.eggsSet} eggs · {batch.breed ?? 'Mixed'} · Due {formatDateShort(batch.expectedHatchDate)}
                   </Text>
                   <View style={styles.progressBg}>
@@ -247,13 +241,12 @@ export default function HomeScreen() {
           </>
         )}
 
-        {/* Recent health events */}
+        {/* Recent health */}
         {recentHealth.length > 0 && (
           <>
             <Text style={styles.sectionLabel}>RECENT HEALTH</Text>
             {recentHealth.map((record) => {
               const bird = birds.find((b) => b.id === record.birdId);
-              const dotColor = colors.healthColors[record.type] ?? colors.textMuted;
               return (
                 <TouchableOpacity
                   key={record.id}
@@ -261,7 +254,7 @@ export default function HomeScreen() {
                   onPress={() => bird && navigation.navigate('BirdDetail', { birdId: bird.id })}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.healthDot, { backgroundColor: dotColor }]} />
+                  <View style={[styles.healthDot, { backgroundColor: colors.healthColors[record.type] ?? colors.textMuted }]} />
                   <View style={styles.healthInfo}>
                     <Text style={styles.healthBird}>{bird?.name ?? 'Unknown'}</Text>
                     <Text style={styles.healthNote} numberOfLines={1}>{record.notes}</Text>
@@ -273,80 +266,143 @@ export default function HomeScreen() {
           </>
         )}
 
-        {/* First-time tip — only shown when truly empty */}
-        {birds.length === 0 && eggLogs.length === 0 && (
+        {/* Upgrade nudge */}
+        {!isPremium && activeBirds >= 4 && (
+          <TouchableOpacity
+            style={styles.upgradeNudge}
+            onPress={() => navigation.navigate('Upgrade')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.upgradeNudgeText}>
+              ⭐ Unlock unlimited birds — upgrade to Premium
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {birds.length === 0 && (
           <View style={styles.tipCard}>
-            <Text style={styles.tipTitle}>💡 Start here</Text>
             <Text style={styles.tipText}>
-              Tap "Add Bird" above to add each of your hens. Then use "Log Eggs" every day to start tracking production.
+              💡 Start by tapping "Add Bird" above to register each of your hens. Then log eggs right here every day.
             </Text>
           </View>
         )}
 
-        <View style={{ height: spacing.xl }} />
+        <View style={{ height: spacing.xxl }} />
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
 
-  headerBand: {
+  header: {
     backgroundColor: colors.headerBg,
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xl,
-    borderBottomLeftRadius: radius.xl,
-    borderBottomRightRadius: radius.xl,
+    paddingBottom: spacing.md,
   },
-  headerTop: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
-  greeting: { fontSize: font.sm, color: 'rgba(255,255,255,0.7)', marginBottom: 3, fontWeight: '500' },
-  title: { fontSize: font.xxxl, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
-  settingsBtn: {
-    width: 38,
-    height: 38,
+  headerTitle: { fontSize: font.xxl, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  streakChip: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  streakChipText: { fontSize: font.xs, color: '#fff', fontWeight: '700' },
+  gearBtn: {
+    width: 34,
+    height: 34,
     borderRadius: radius.full,
     backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  settingsBtnText: { fontSize: 20 },
+  gearBtnText: { fontSize: 17 },
 
-  heroCard: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  statsBar: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: radius.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  statItem: { flex: 1, alignItems: 'center' },
+  statBig: { fontSize: font.xl, fontWeight: '800', color: '#fff' },
+  statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.65)', marginTop: 1 },
+  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginVertical: 4 },
+
+  loggerCard: {
+    backgroundColor: colors.surface,
+    marginHorizontal: spacing.xl,
+    marginTop: -radius.sm,
     borderRadius: radius.lg,
-    padding: spacing.lg,
+    padding: spacing.md,
+    paddingBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadow.md,
+    zIndex: 10,
+  },
+  loggerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
-  heroLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  heroEmoji: { fontSize: 40 },
-  heroLabel: { fontSize: font.xs, color: 'rgba(255,255,255,0.7)', fontWeight: '600', marginBottom: 2 },
-  heroCount: { fontSize: 48, fontWeight: '800', color: '#fff', lineHeight: 52 },
-  heroSub: { fontSize: font.xs, color: 'rgba(255,255,255,0.65)' },
-  heroRight: { alignItems: 'flex-end', gap: 2 },
-  streakBadge: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: radius.full,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
     marginBottom: spacing.sm,
   },
-  streakText: { fontSize: font.xs, color: '#fff', fontWeight: '700' },
-  heroPeriodLabel: { fontSize: font.xs, color: 'rgba(255,255,255,0.6)' },
-  heroAvg: { fontSize: font.xl, fontWeight: '800', color: '#fff', marginBottom: spacing.sm },
-  heroTotal: { fontSize: font.lg, fontWeight: '700', color: '#fff' },
+  loggerTitle: { fontSize: font.sm, fontWeight: '700', color: colors.text },
+  clearLink: { fontSize: font.sm, color: colors.error, fontWeight: '600' },
+  quickRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    alignItems: 'center',
+  },
+  numBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.background,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  numBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  numBtnText: { fontSize: font.sm, fontWeight: '700', color: colors.textSecondary },
+  numBtnTextActive: { color: '#fff' },
+  customPair: { flexDirection: 'row', gap: spacing.xs, alignItems: 'center' },
+  customInput: {
+    width: 44,
+    height: 36,
+    borderRadius: radius.sm,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    textAlign: 'center',
+    fontSize: font.sm,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  customBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.sm,
+    backgroundColor: colors.secondary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customBtnText: { fontSize: font.md, color: '#fff', fontWeight: '700' },
 
   scroll: { flex: 1 },
-  scrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl },
+  scrollContent: { paddingHorizontal: spacing.xl, paddingTop: spacing.lg },
 
   sectionLabel: {
     fontSize: font.xs,
@@ -354,14 +410,13 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     letterSpacing: 0.8,
     marginBottom: spacing.sm,
-    marginTop: spacing.xs,
   },
 
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
   actionCard: {
     width: '48%' as any,
@@ -371,72 +426,29 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     ...shadow.sm,
-  },
-  actionIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.sm,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
-  actionEmoji: { fontSize: 24 },
-  actionTitle: { fontSize: font.md, fontWeight: '700', color: colors.text, marginBottom: 3 },
-  actionSub: { fontSize: font.xs, lineHeight: 16 },
-
-  flockRow: {
     flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    overflow: 'hidden',
-    ...shadow.sm,
-  },
-  flockStat: {
-    flex: 1,
     alignItems: 'center',
-    paddingVertical: spacing.md,
+    gap: spacing.sm,
   },
-  flockStatBorder: {
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-  },
-  flockStatEmoji: { fontSize: 20, marginBottom: 3 },
-  flockStatValue: { fontSize: font.xl, fontWeight: '800', color: colors.text },
-  flockStatLabel: { fontSize: font.xs, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
+  actionEmoji: { fontSize: 26 },
+  actionLabel: { fontSize: font.md, fontWeight: '700', color: colors.text, flex: 1 },
+  actionSub: { fontSize: font.xs, color: colors.textMuted, position: 'absolute', bottom: spacing.sm, right: spacing.md },
 
-  hatchCard: {
+  batchCard: {
     backgroundColor: colors.surface,
     borderRadius: radius.md,
-    padding: spacing.lg,
+    padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.border,
     ...shadow.sm,
   },
-  hatchTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  hatchName: { fontSize: font.md, fontWeight: '700', color: colors.text },
-  daysLeftBadge: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.full,
-  },
-  daysLeftText: { fontSize: font.xs, fontWeight: '700', color: colors.primaryDark },
-  hatchMeta: { fontSize: font.sm, color: colors.textMuted, marginBottom: spacing.sm },
-  progressBg: {
-    height: 6,
-    backgroundColor: colors.border,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%' as any,
-    backgroundColor: colors.secondary,
-    borderRadius: radius.full,
-  },
+  batchTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
+  batchName: { fontSize: font.md, fontWeight: '700', color: colors.text },
+  batchBadge: { fontSize: font.xs, fontWeight: '700', color: colors.primaryDark, backgroundColor: colors.primaryLight, paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full },
+  batchMeta: { fontSize: font.xs, color: colors.textMuted, marginBottom: spacing.sm },
+  progressBg: { height: 5, backgroundColor: colors.border, borderRadius: radius.full, overflow: 'hidden' },
+  progressFill: { height: '100%' as any, backgroundColor: colors.secondary, borderRadius: radius.full },
 
   healthRow: {
     flexDirection: 'row',
@@ -450,20 +462,30 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     ...shadow.sm,
   },
-  healthDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
+  healthDot: { width: 9, height: 9, borderRadius: 5, flexShrink: 0 },
   healthInfo: { flex: 1 },
   healthBird: { fontSize: font.sm, fontWeight: '700', color: colors.text },
   healthNote: { fontSize: font.xs, color: colors.textMuted, marginTop: 1 },
-  healthDate: { fontSize: font.xs, color: colors.textMuted, flexShrink: 0 },
+  healthDate: { fontSize: font.xs, color: colors.textMuted },
+
+  upgradeNudge: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginTop: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    alignItems: 'center',
+  },
+  upgradeNudgeText: { fontSize: font.sm, fontWeight: '700', color: colors.primaryDark },
 
   tipCard: {
     backgroundColor: colors.primaryLight,
     borderRadius: radius.md,
-    padding: spacing.lg,
-    marginTop: spacing.sm,
+    padding: spacing.md,
+    marginTop: spacing.xs,
     borderWidth: 1,
     borderColor: '#FDE68A',
   },
-  tipTitle: { fontSize: font.sm, fontWeight: '700', color: colors.primaryDark, marginBottom: 4 },
-  tipText: { fontSize: font.sm, color: colors.primaryDark, lineHeight: 20, opacity: 0.85 },
+  tipText: { fontSize: font.sm, color: colors.primaryDark, lineHeight: 20 },
 });
