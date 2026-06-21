@@ -107,6 +107,14 @@ export default function DrillsScreen() {
     ? 1 - timeLeft / activeDrill.durationSeconds
     : 0;
 
+  const timerColor = activeDrill
+    ? timeLeft <= 10
+      ? colors.error
+      : timeLeft <= activeDrill.durationSeconds * 0.25
+      ? '#F97316'
+      : colors.primary
+    : colors.primary;
+
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
@@ -180,14 +188,7 @@ export default function DrillsScreen() {
               <Text style={styles.modalDrillName}>{activeDrill.name}</Text>
               <Text style={styles.modalDesc}>{activeDrill.description}</Text>
 
-              {/* Progress ring (simplified as a bar) */}
-              <View style={styles.progressContainer}>
-                <View style={styles.progressBg}>
-                  <View style={[styles.progressFill, { width: `${progress * 100}%` as any }]} />
-                </View>
-              </View>
-
-              {/* Timer display */}
+              {/* Timer ring + display */}
               {finished ? (
                 <View style={styles.finishedContainer}>
                   <Text style={styles.finishedEmoji}>🎉</Text>
@@ -195,8 +196,32 @@ export default function DrillsScreen() {
                   <Text style={styles.finishedSub}>Logged to your history.</Text>
                 </View>
               ) : (
-                <Text style={styles.timerDisplay}>{formatDuration(timeLeft)}</Text>
+                <View style={styles.timerBlock}>
+                  <Text style={[styles.timerDisplay, { color: timerColor }]}>
+                    {formatDuration(timeLeft)}
+                  </Text>
+                  <Text style={styles.timerSub}>
+                    of {formatDuration(activeDrill.durationSeconds)}
+                  </Text>
+                </View>
               )}
+
+              {/* Progress bar */}
+              <View style={styles.progressContainer}>
+                <View style={styles.progressBg}>
+                  <View style={[styles.progressFill, {
+                    width: `${progress * 100}%` as any,
+                    backgroundColor: timerColor,
+                  }]} />
+                </View>
+                <View style={styles.progressLabels}>
+                  <Text style={styles.progressLabelText}>0:00</Text>
+                  <Text style={[styles.progressLabelText, { color: timerColor, fontWeight: '700' }]}>
+                    {Math.round(progress * 100)}%
+                  </Text>
+                  <Text style={styles.progressLabelText}>{formatDuration(activeDrill.durationSeconds)}</Text>
+                </View>
+              </View>
 
               <View style={styles.timerBtns}>
                 <TouchableOpacity style={styles.resetBtn} onPress={resetTimer}>
@@ -310,25 +335,37 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     marginBottom: spacing.xl,
   },
+  timerBlock: { alignItems: 'center', marginBottom: spacing.lg },
+  timerDisplay: {
+    fontSize: 96,
+    fontWeight: '800',
+    color: colors.text,
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -2,
+    lineHeight: 104,
+  },
+  timerSub: {
+    fontSize: font.md,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
+  },
   progressContainer: { width: '100%', marginBottom: spacing.xl },
   progressBg: {
-    height: 8,
+    height: 18,
     backgroundColor: colors.border,
     borderRadius: radius.full,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: colors.primary,
     borderRadius: radius.full,
   },
-  timerDisplay: {
-    fontSize: 80,
-    fontWeight: '800',
-    color: colors.text,
-    fontVariant: ['tabular-nums'],
-    marginBottom: spacing.xl,
+  progressLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
   },
+  progressLabelText: { fontSize: font.xs, color: colors.textMuted },
   finishedContainer: { alignItems: 'center', marginBottom: spacing.xl },
   finishedEmoji: { fontSize: 64, marginBottom: spacing.md },
   finishedTitle: { fontSize: font.xxl, fontWeight: '800', color: colors.primary },

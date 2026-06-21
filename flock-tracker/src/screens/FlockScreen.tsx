@@ -20,11 +20,18 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 export default function FlockScreen() {
   const navigation = useNavigation<Nav>();
   const insets = useSafeAreaInsets();
-  const { birds, eggLogs, isPremium } = useStore();
+  const { birds, eggLogs, healthRecords, isPremium } = useStore();
   const [showInactive, setShowInactive] = useState(false);
 
   const today = toDateKey();
   const todayLog = eggLogs.find((l) => l.date === today);
+
+  const lastHealthByBird: Record<string, string> = {};
+  healthRecords.forEach((r) => {
+    if (!lastHealthByBird[r.birdId]) {
+      lastHealthByBird[r.birdId] = r.type;
+    }
+  });
 
   const visible = showInactive ? birds : birds.filter((b) => b.isActive);
   const atLimit = !isPremium && birds.length >= FREE_BIRD_LIMIT_EXPORT;
@@ -76,6 +83,7 @@ export default function FlockScreen() {
             bird={item}
             onPress={() => navigation.navigate('BirdDetail', { birdId: item.id })}
             eggCountToday={todayLog?.count}
+            lastHealthType={lastHealthByBird[item.id]}
           />
         )}
         ListEmptyComponent={

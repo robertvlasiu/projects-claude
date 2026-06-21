@@ -85,8 +85,21 @@ export default function SkillsScreen() {
             {/* Overall score */}
             <View style={styles.overallCard}>
               <Text style={styles.overallScore}>{overallAvg.toFixed(1)}</Text>
-              <Text style={styles.overallLabel}>Overall Rating</Text>
-              <Text style={styles.overallSub}>Based on {periodMatches.length} matches</Text>
+              <Text style={styles.overallLabel}>
+                {overallAvg >= 4.5 ? 'Elite' : overallAvg >= 3.5 ? 'Strong' : overallAvg >= 2.5 ? 'Solid' : overallAvg >= 1.5 ? 'Developing' : 'Needs Work'}
+              </Text>
+              <View style={styles.overallSegments}>
+                {[1, 2, 3, 4, 5].map((seg) => (
+                  <View
+                    key={seg}
+                    style={[
+                      styles.overallSegment,
+                      { opacity: overallAvg >= seg - 0.5 ? 1 : 0.25 },
+                    ]}
+                  />
+                ))}
+              </View>
+              <Text style={styles.overallSub}>Based on {periodMatches.length} match{periodMatches.length !== 1 ? 'es' : ''}</Text>
             </View>
 
             {/* Insight cards */}
@@ -157,15 +170,28 @@ const styles = StyleSheet.create({
   periodTextActive: { color: colors.primaryDark, fontWeight: '700' },
   content: { padding: spacing.xl, paddingTop: spacing.sm },
   overallCard: {
-    backgroundColor: colors.primary,
+    backgroundColor: colors.headerBg,
     borderRadius: radius.lg,
     padding: spacing.xl,
     alignItems: 'center',
     marginBottom: spacing.md,
+    ...shadow.md,
   },
-  overallScore: { fontSize: 56, fontWeight: '800', color: '#fff' },
-  overallLabel: { fontSize: font.lg, fontWeight: '600', color: '#fff', opacity: 0.9 },
-  overallSub: { fontSize: font.sm, color: '#fff', opacity: 0.7, marginTop: 4 },
+  overallScore: { fontSize: 72, fontWeight: '800', color: '#fff', letterSpacing: -2, lineHeight: 78 },
+  overallLabel: { fontSize: font.xl, fontWeight: '700', color: '#fff', opacity: 0.95, marginTop: 2 },
+  overallSegments: {
+    flexDirection: 'row',
+    gap: 6,
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  overallSegment: {
+    width: 44,
+    height: 6,
+    borderRadius: radius.full,
+    backgroundColor: '#fff',
+  },
+  overallSub: { fontSize: font.sm, color: '#fff', opacity: 0.65 },
   insightRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
   insightCard: {
     flex: 1,

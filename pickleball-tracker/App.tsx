@@ -1,6 +1,6 @@
 import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Text, ScrollView } from 'react-native';
+import { Text, ScrollView, View, Platform } from 'react-native';
 import RootNavigator from './src/navigation';
 
 class ErrorBoundary extends React.Component<
@@ -29,12 +29,23 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+const inner = (
+  <ErrorBoundary>
+    <SafeAreaProvider>
+      <RootNavigator />
+    </SafeAreaProvider>
+  </ErrorBoundary>
+);
+
 export default function App() {
-  return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <RootNavigator />
-      </SafeAreaProvider>
-    </ErrorBoundary>
-  );
+  if (Platform.OS === 'web') {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', backgroundColor: '#0F172A' }}>
+        <View style={{ flex: 1, width: '100%', maxWidth: 430, overflow: 'hidden', backgroundColor: '#F0F4F8' }}>
+          {inner}
+        </View>
+      </View>
+    );
+  }
+  return inner;
 }

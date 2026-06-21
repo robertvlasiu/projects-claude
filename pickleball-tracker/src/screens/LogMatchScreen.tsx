@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -28,6 +28,7 @@ const SHOT_LABELS: Record<keyof ShotRatings, string> = {
   drive: 'Drives',
   overhead: 'Overhead',
 };
+const RATING_LABELS = ['', 'Needs Work', 'Developing', 'Solid', 'Strong', 'Elite'];
 
 const defaultShots: ShotRatings = { serve: 3, return: 3, dink: 3, drop: 3, drive: 3, overhead: 3 };
 
@@ -43,8 +44,8 @@ export default function LogMatchScreen() {
 
   const [opponent, setOpponent] = useState(editMatch?.opponentName ?? '');
   const [partner, setPartner] = useState(editMatch?.partnerName ?? '');
-  const [myScore, setMyScore] = useState(editMatch ? String(editMatch.myScore) : '');
-  const [oppScore, setOppScore] = useState(editMatch ? String(editMatch.opponentScore) : '');
+  const [myScore, setMyScore] = useState<number>(editMatch?.myScore ?? 0);
+  const [oppScore, setOppScore] = useState<number>(editMatch?.opponentScore ?? 0);
   const [location, setLocation] = useState(editMatch?.location ?? '');
   const [gameType, setGameType] = useState<'singles' | 'doubles'>(editMatch?.gameType ?? 'singles');
   const [notes, setNotes] = useState(editMatch?.notes ?? '');
@@ -58,23 +59,16 @@ export default function LogMatchScreen() {
       Alert.alert('Missing info', "Please enter your opponent's name.");
       return;
     }
-    const my = parseInt(myScore);
-    const opp = parseInt(oppScore);
-    if (isNaN(my) || isNaN(opp)) {
-      Alert.alert('Missing info', 'Please enter valid scores.');
-      return;
-    }
-
     const match: Match = {
       id: editMatch?.id ?? generateId(),
       date: editMatch?.date ?? new Date().toISOString(),
       opponentName: opponent.trim(),
       partnerName: partner.trim() || undefined,
-      myScore: my,
-      opponentScore: opp,
+      myScore,
+      opponentScore: oppScore,
       location: location.trim() || undefined,
       gameType,
-      isWin: my > opp,
+      isWin: myScore > oppScore,
       shots,
       notes: notes.trim() || undefined,
     };
@@ -109,6 +103,9 @@ export default function LogMatchScreen() {
     ]);
   };
 
+  const isWon = myScore > oppScore;
+  const isTied = myScore === oppScore;
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -137,7 +134,7 @@ export default function LogMatchScreen() {
                 onPress={() => setGameType(type)}
               >
                 <Text style={[styles.toggleText, gameType === type && styles.toggleTextActive]}>
-                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                  {type === 'singles' ? '🎯 Singles' : '👥 Doubles'}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -168,51 +165,56 @@ export default function LogMatchScreen() {
           )}
         </View>
 
-        {/* Score */}
+        {/* Score — stepper buttons */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Score</Text>
           <View style={styles.scoreRow}>
             <View style={styles.scoreBox}>
-              <Text style={styles.scoreLabel}>You</Text>
-              <TextInput
-                style={styles.scoreInput}
-                placeholder="0"
-                placeholderTextColor={colors.textMuted}
-                value={myScore}
-                onChangeText={setMyScore}
-                keyboardType="number-pad"
-                maxLength={2}
-              />
+              <Text style={styles.scorePlayerLabel}>You</Text>
+              <View style={styles.stepper}>
+                <TouchableOpacity
+                  style={styles.stepBtn}
+                  onPress={() => setMyScore((s) => Math.max(0, s - 1))}
+                >
+                  <Text style={styles.stepBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={[styles.stepValue, isWon && { color: colors.win }]}>{myScore}</Text>
+                <TouchableOpacity
+                  style={styles.stepBtn}
+                  onPress={() => setMyScore((s) => Math.min(99, s + 1))}
+                >
+                  <Text style={styles.stepBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
             </View>
             <Text style={styles.scoreDash}>–</Text>
             <View style={styles.scoreBox}>
-              <Text style={styles.scoreLabel}>Them</Text>
-              <TextInput
-                style={styles.scoreInput}
-                placeholder="0"
-                placeholderTextColor={colors.textMuted}
-                value={oppScore}
-                onChangeText={setOppScore}
-                keyboardType="number-pad"
-                maxLength={2}
-              />
+              <Text style={styles.scorePlayerLabel}>Them</Text>
+              <View style={styles.stepper}>
+                <TouchableOpacity
+                  style={styles.stepBtn}
+                  onPress={() => setOppScore((s) => Math.max(0, s - 1))}
+                >
+                  <Text style={styles.stepBtnText}>−</Text>
+                </TouchableOpacity>
+                <Text style={[styles.stepValue, !isWon && !isTied && { color: colors.loss }]}>{oppScore}</Text>
+                <TouchableOpacity
+                  style={styles.stepBtn}
+                  onPress={() => setOppScore((s) => Math.min(99, s + 1))}
+                >
+                  <Text style={styles.stepBtnText}>+</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
-          {(() => {
-            const my = parseInt(myScore);
-            const opp = parseInt(oppScore);
-            if (!isNaN(my) && !isNaN(opp)) {
-              const won = my > opp;
-              return (
-                <View style={[styles.resultBadge, { backgroundColor: won ? colors.winLight : colors.lossLight }]}>
-                  <Text style={[styles.resultText, { color: won ? colors.win : colors.loss }]}>
-                    {won ? '🏆 You won!' : '💪 Keep grinding'}
-                  </Text>
-                </View>
-              );
-            }
-            return null;
-          })()}
+          <View style={[
+            styles.resultBadge,
+            { backgroundColor: isWon ? colors.winLight : isTied ? colors.background : colors.lossLight },
+          ]}>
+            <Text style={[styles.resultText, { color: isWon ? colors.win : isTied ? colors.textMuted : colors.loss }]}>
+              {isWon ? '🏆 You won!' : isTied ? '🤝 Tied' : '💪 Keep grinding'}
+            </Text>
+          </View>
         </View>
 
         {/* Location */}
@@ -231,29 +233,41 @@ export default function LogMatchScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Rate Your Shots</Text>
           <Text style={styles.sectionHint}>How did each part of your game feel today?</Text>
-          {SHOT_KEYS.map((key) => (
-            <View key={key} style={styles.shotRow}>
-              <Text style={styles.shotLabel}>{SHOT_LABELS[key]}</Text>
+          {SHOT_KEYS.map((key, idx) => (
+            <View
+              key={key}
+              style={[
+                styles.shotRow,
+                idx < SHOT_KEYS.length - 1 && styles.shotRowBorder,
+              ]}
+            >
+              <View style={styles.shotLabelCol}>
+                <Text style={styles.shotLabel}>{SHOT_LABELS[key]}</Text>
+                <Text style={[styles.shotRatingLabel, { color: colors.ratingColors[shots[key] - 1] }]}>
+                  {RATING_LABELS[shots[key]]}
+                </Text>
+              </View>
               <View style={styles.ratingRow}>
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <TouchableOpacity
-                    key={n}
-                    style={[
-                      styles.ratingBtn,
-                      shots[key] === n && { backgroundColor: colors.ratingColors[n - 1] },
-                    ]}
-                    onPress={() => setRating(key, n)}
-                  >
-                    <Text
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const selected = shots[key] === n;
+                  return (
+                    <TouchableOpacity
+                      key={n}
                       style={[
-                        styles.ratingNum,
-                        shots[key] === n && styles.ratingNumActive,
+                        styles.ratingCircle,
+                        selected && {
+                          backgroundColor: colors.ratingColors[n - 1],
+                          borderColor: colors.ratingColors[n - 1],
+                        },
                       ]}
+                      onPress={() => setRating(key, n)}
                     >
-                      {n}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text style={[styles.ratingNum, selected && styles.ratingNumSelected]}>
+                        {n}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
           ))}
@@ -307,6 +321,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
     ...shadow.sm,
   },
   sectionLabel: {
@@ -360,22 +376,45 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   scoreBox: { alignItems: 'center' },
-  scoreLabel: { fontSize: font.sm, color: colors.textSecondary, marginBottom: spacing.xs },
-  scoreInput: {
-    borderWidth: 2,
-    borderColor: colors.border,
+  scorePlayerLabel: {
+    fontSize: font.sm,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
     borderRadius: radius.md,
-    width: 80,
-    height: 60,
-    textAlign: 'center',
+    padding: 3,
+    gap: 2,
+  },
+  stepBtn: {
+    width: 44,
+    height: 56,
+    borderRadius: radius.sm,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  stepBtnText: { fontSize: 26, color: colors.textSecondary, fontWeight: '300', lineHeight: 30 },
+  stepValue: {
     fontSize: font.xxxl,
     fontWeight: '800',
     color: colors.text,
+    minWidth: 60,
+    textAlign: 'center',
+    letterSpacing: -1,
   },
-  scoreDash: { fontSize: font.xxl, color: colors.textMuted, marginTop: 16 },
+  scoreDash: { fontSize: font.xxl, color: colors.textMuted, marginTop: 22 },
   resultBadge: {
     borderRadius: radius.full,
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.xs + 2,
     alignItems: 'center',
   },
   resultText: { fontSize: font.md, fontWeight: '700' },
@@ -383,28 +422,36 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    paddingVertical: spacing.sm + 2,
   },
-  shotLabel: { fontSize: font.md, color: colors.text, flex: 1 },
-  ratingRow: { flexDirection: 'row', gap: 6 },
-  ratingBtn: {
+  shotRowBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  shotLabelCol: { flex: 1, marginRight: spacing.sm },
+  shotLabel: { fontSize: font.md, color: colors.text, fontWeight: '600' },
+  shotRatingLabel: { fontSize: font.xs, fontWeight: '600', marginTop: 2 },
+  ratingRow: { flexDirection: 'row', gap: 5 },
+  ratingCircle: {
     width: 36,
     height: 36,
-    borderRadius: radius.sm,
+    borderRadius: 18,
     backgroundColor: colors.background,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
   },
-  ratingNum: { fontSize: font.md, color: colors.textSecondary, fontWeight: '600' },
-  ratingNumActive: { color: '#fff', fontWeight: '800' },
+  ratingNum: { fontSize: font.sm, color: colors.textMuted, fontWeight: '600' },
+  ratingNumSelected: { color: '#fff', fontWeight: '800' },
   deleteBtn: {
     backgroundColor: colors.errorLight,
     borderRadius: radius.md,
     padding: spacing.lg,
     alignItems: 'center',
     marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.error + '30',
   },
   deleteBtnText: { color: colors.error, fontWeight: '700', fontSize: font.md },
 });

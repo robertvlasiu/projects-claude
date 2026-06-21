@@ -79,38 +79,53 @@ export default function EggLogScreen() {
 
         {/* 30-day mini chart */}
         <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Last 30 Days</Text>
-          <View style={styles.chart}>
-            {last30.map((date) => {
-              const count = logMap[date] ?? 0;
-              const height = Math.max((count / maxCount) * 60, count > 0 ? 4 : 2);
-              const isSelected = date === selectedDate;
-              return (
-                <TouchableOpacity
-                  key={date}
-                  style={styles.barWrapper}
-                  onPress={() => setSelectedDate(date)}
-                >
-                  <View
-                    style={[
-                      styles.bar,
-                      {
-                        height,
-                        backgroundColor: isSelected
-                          ? colors.primary
-                          : count > 0
-                          ? colors.primaryLight
-                          : colors.border,
-                      },
-                    ]}
-                  />
-                </TouchableOpacity>
-              );
-            })}
+          <View style={styles.chartHeader}>
+            <Text style={styles.chartTitle}>Last 30 Days</Text>
+            {maxCount > 0 && (
+              <Text style={styles.chartPeak}>Peak: {maxCount} 🥚</Text>
+            )}
+          </View>
+          <View style={styles.chartArea}>
+            {/* Horizontal grid lines */}
+            {[0.5, 1].map((frac) => (
+              <View
+                key={frac}
+                style={[styles.gridLine, { bottom: frac * 80 }]}
+              />
+            ))}
+            <View style={styles.chart}>
+              {last30.map((date) => {
+                const count = logMap[date] ?? 0;
+                const height = Math.max((count / maxCount) * 80, count > 0 ? 5 : 2);
+                const isSelected = date === selectedDate;
+                return (
+                  <TouchableOpacity
+                    key={date}
+                    style={styles.barWrapper}
+                    onPress={() => setSelectedDate(date)}
+                  >
+                    <View
+                      style={[
+                        styles.bar,
+                        {
+                          height,
+                          backgroundColor: isSelected
+                            ? colors.primary
+                            : count > 0
+                            ? colors.primaryMid + '70'
+                            : colors.border,
+                          borderRadius: isSelected ? 3 : 2,
+                        },
+                      ]}
+                    />
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
           <View style={styles.chartLabels}>
             <Text style={styles.chartLabel}>30 days ago</Text>
-            <Text style={styles.chartLabel}>Today</Text>
+            <Text style={[styles.chartLabel, { color: colors.primary, fontWeight: '600' }]}>Today</Text>
           </View>
         </View>
 
@@ -226,21 +241,43 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg,
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
     ...shadow.sm,
   },
-  chartTitle: { fontSize: font.md, fontWeight: '700', color: colors.text, marginBottom: spacing.md },
+  chartHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  chartTitle: { fontSize: font.md, fontWeight: '700', color: colors.text },
+  chartPeak: { fontSize: font.xs, color: colors.primaryDark, fontWeight: '600' },
+  chartArea: {
+    position: 'relative',
+    height: 88,
+    justifyContent: 'flex-end',
+  },
+  gridLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: colors.border,
+    opacity: 0.6,
+  },
   chart: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    height: 68,
+    height: 80,
     gap: 2,
   },
-  barWrapper: { flex: 1, justifyContent: 'flex-end', height: 68 },
-  bar: { borderRadius: 2, minHeight: 2 },
+  barWrapper: { flex: 1, justifyContent: 'flex-end', height: 80 },
+  bar: { minHeight: 2 },
   chartLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 4,
+    marginTop: 5,
   },
   chartLabel: { fontSize: 10, color: colors.textMuted },
   logCard: {
