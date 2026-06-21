@@ -23,6 +23,7 @@ export default function Onboarding() {
         .map((s) => s.trim())
         .filter(Boolean),
       otherPartyName: otherParty.trim() || undefined,
+      otherPartySharePct: 50,
       createdAt: new Date().toISOString(),
     });
     router.replace("/");

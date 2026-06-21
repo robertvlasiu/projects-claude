@@ -2,8 +2,12 @@
  * Log an incident. Captures category, title, factual details, when it occurred,
  * and optional photo/screenshot attachments. createdAt is stamped at save and
  * never editable — that separation is the credibility anchor (see types.ts).
+ *
+ * Edit mode: pass an `id` route param to edit an existing incident. Editing
+ * touches only editable fields and records an `editedAt` stamp; createdAt and
+ * the hash-chain anchors are never mutated (see store.updateIncident).
  */
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Image,
   Pressable,
@@ -14,8 +18,8 @@ import {
   View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
-import { router } from "expo-router";
-import { Body, Button, Muted } from "@/components/ui";
+import { router, useLocalSearchParams } from "expo-router";
+import { Body, Button, DateTimeField, Muted } from "@/components/ui";
 import { colors, radius, spacing } from "@/theme";
 import { store, uid } from "@/data/store";
 import type { Attachment, IncidentCategory } from "@/data/types";
@@ -30,11 +34,34 @@ const CATEGORIES: { kind: IncidentCategory; label: string }[] = [
 ];
 
 export default function LogIncident() {
+  const params = useLocalSearchParams<{ id?: string }>();
+  const editId = params.id;
+  const isEdit = !!editId;
+
   const [category, setCategory] = useState<IncidentCategory>("missed_exchange");
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [occurredAt, setOccurredAt] = useState(new Date().toISOString());
   const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(!isEdit);
+
+  useEffect(() => {
+    if (!editId) return;
+    (async () => {
+      const c = await store.getCase();
+      if (!c) return;
+      const found = (await store.getIncidents(c.id)).find((i) => i.id === editId);
+      if (found) {
+        setCategory(found.category);
+        setTitle(found.title);
+        setDetails(found.details);
+        setAttachments(found.attachments);
+        setOccurredAt(found.occurredAt);
+      }
+      setLoaded(true);
+    })();
+  }, [editId]);
 
   async function pickImage() {
     const res = await ImagePicker.launchImageLibraryAsync({
@@ -46,24 +73,47 @@ export default function LogIncident() {
     }
   }
 
+  const removeAttachment = useCallback((id: string) => {
+    setAttachments((a) => a.filter((x) => x.id !== id));
+  }, []);
+
   async function save() {
     if (saving) return;
     setSaving(true);
     const c = await store.getCase();
     if (!c) return router.replace("/onboarding");
-    const now = new Date().toISOString();
-    await store.addIncident({
-      id: uid(),
-      caseId: c.id,
-      category,
-      title: title.trim() || CATEGORIES.find((x) => x.kind === category)!.label,
-      details: details.trim(),
-      attachments,
-      occurredAt: now, // MVP: default to now; date/time picker is a TODO
-      createdAt: now,
-    });
+    const resolvedTitle =
+      title.trim() || CATEGORIES.find((x) => x.kind === category)!.label;
+    if (isEdit && editId) {
+      await store.updateIncident(editId, {
+        category,
+        title: resolvedTitle,
+        details: details.trim(),
+        attachments,
+        occurredAt,
+      });
+    } else {
+      await store.addIncident({
+        id: uid(),
+        caseId: c.id,
+        category,
+        title: resolvedTitle,
+        details: details.trim(),
+        attachments,
+        occurredAt,
+        createdAt: new Date().toISOString(),
+      });
+    }
     router.back();
   }
+
+  async function remove() {
+    if (!editId) return;
+    await store.deleteIncident(editId);
+    router.back();
+  }
+
+  if (!loaded) return null;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -107,16 +157,46 @@ export default function LogIncident() {
       />
 
       <View style={{ height: spacing.md }} />
+      <DateTimeField
+        label="When did it happen?"
+        value={occurredAt}
+        onChange={setOccurredAt}
+      />
+
+      <View style={{ height: spacing.md }} />
       <Button label="📎 Attach photo / screenshot" variant="secondary" onPress={pickImage} />
       <View style={styles.thumbs}>
         {attachments.map((a) => (
-          <Image key={a.id} source={{ uri: a.uri }} style={styles.thumb} />
+          <Pressable key={a.id} onLongPress={() => removeAttachment(a.id)}>
+            <Image source={{ uri: a.uri }} style={styles.thumb} />
+          </Pressable>
         ))}
       </View>
+      {attachments.length > 0 ? (
+        <Muted>Long-press an attachment to remove it.</Muted>
+      ) : null}
 
       <View style={{ height: spacing.lg }} />
-      <Button label="Save to record" onPress={save} disabled={saving} />
-      <Muted>This entry will be timestamped now and cannot be backdated.</Muted>
+      <Button
+        label={isEdit ? "Save changes" : "Save to record"}
+        onPress={save}
+        disabled={saving}
+      />
+      {isEdit ? (
+        <>
+          <View style={{ height: spacing.sm }} />
+          <Button label="Delete entry" variant="danger" onPress={remove} />
+          <Muted>
+            Editing records an "edited at" stamp. The original logged time is
+            never changed.
+          </Muted>
+        </>
+      ) : (
+        <Muted>
+          The logged time is stamped now and cannot be backdated. Use "When did
+          it happen?" above to record the actual event time.
+        </Muted>
+      )}
     </ScrollView>
   );
 }

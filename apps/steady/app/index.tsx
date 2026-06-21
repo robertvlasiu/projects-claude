@@ -1,51 +1,78 @@
 /**
  * Home / "Today" screen.
  *
- * MVP responsibilities (see BUILD_TO_MVP.md):
  *  - On first launch, redirect to /onboarding if no dog exists.
- *  - Show today's suggested protocol + quick links to Walk Mode and Progress.
+ *  - Pick today's protocol from the dog's triggers + recent sessions.
+ *  - Show a streak counter, plus quick links to Walk Mode and Progress.
  *
- * This scaffold wires the data load + navigation. The agent fleshes out the
- * "today's plan" logic and visual polish.
+ * Reloads on focus so streak/suggestion stay fresh after a session or walk.
  */
-import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
-import { Link, router } from "expo-router";
+import { useCallback, useState } from "react";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Link, router, useFocusEffect } from "expo-router";
 import { Body, Button, Card, H1, H2, Muted } from "@/components/ui";
-import { spacing } from "@/theme";
+import { colors, font, radius, spacing } from "@/theme";
 import { store } from "@/data/store";
-import { PROTOCOLS } from "@/data/seed";
-import type { Dog } from "@/data/types";
+import { computeStreak, pickTodaysProtocol } from "@/data/logic";
+import type { Dog, Protocol } from "@/data/types";
 
 export default function Home() {
   const [dog, setDog] = useState<Dog | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [todays, setTodays] = useState<Protocol | null>(null);
+  const [streak, setStreak] = useState(0);
+  const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    (async () => {
-      const dogs = await store.getDogs();
-      if (dogs.length === 0) {
-        router.replace("/onboarding");
-        return;
-      }
-      setDog(dogs[0]);
-      setLoading(false);
-    })();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      (async () => {
+        const dogs = await store.getDogs();
+        if (dogs.length === 0) {
+          router.replace("/onboarding");
+          return;
+        }
+        const d = dogs[0];
+        const [sessions, walks] = await Promise.all([
+          store.getSessions(d.id),
+          store.getWalks(d.id),
+        ]);
+        if (!active) return;
+        setDog(d);
+        setTodays(pickTodaysProtocol(d, sessions));
+        setStreak(computeStreak(sessions, walks));
+        setReady(true);
+      })();
+      return () => {
+        active = false;
+      };
+    }, [])
+  );
 
-  if (loading || !dog) return null;
-
-  // TODO(agent): pick today's protocol based on dog.triggers + recent sessions.
-  const todays = PROTOCOLS[0];
+  if (!ready || !dog || !todays) return null;
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <H1>Hi {dog.name} 🐾</H1>
-      <Muted>Small, calm reps. You're doing the work.</Muted>
+      <View style={styles.header}>
+        <View style={{ flex: 1 }}>
+          <H1>Hi {dog.name} 🐾</H1>
+          <Muted>Small, calm reps. You're doing the work.</Muted>
+        </View>
+        {streak > 0 && (
+          <View style={styles.streak}>
+            <Text style={styles.streakNum}>🔥 {streak}</Text>
+            <Text style={styles.streakLabel}>
+              day{streak === 1 ? "" : "s"}
+            </Text>
+          </View>
+        )}
+      </View>
 
       <Card style={{ marginTop: spacing.lg }}>
-        <H2>Today's session</H2>
-        <Body>{todays.title}</Body>
+        <Muted>TODAY'S SESSION</Muted>
+        <View style={{ height: spacing.xs }} />
+        <H2>
+          {todays.title} {todays.premium ? "🔒" : ""}
+        </H2>
         <Muted>
           {todays.durationMin} min · {todays.summary}
         </Muted>
@@ -76,4 +103,16 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingTop: spacing.xl },
+  header: { flexDirection: "row", alignItems: "flex-start" },
+  streak: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    alignItems: "center",
+  },
+  streakNum: { fontSize: font.h3, fontWeight: "800", color: colors.text },
+  streakLabel: { fontSize: font.small, color: colors.textMuted },
 });

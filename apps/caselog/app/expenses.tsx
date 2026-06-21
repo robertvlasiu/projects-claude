@@ -1,10 +1,15 @@
 /**
  * Expenses — log child-related costs with receipt photos and a who-paid split,
- * and show the running balance the other parent owes. This list + the balance
- * is, on its own, worth the subscription to many users.
+ * and show the running balance. This list + the balance is, on its own, worth
+ * the subscription to many users.
  *
- * MVP split model: "i_paid" assumes a 50/50 share → half is owed to the user.
- * A configurable share % is a documented TODO in BUILD_TO_MVP.md.
+ * Split model: the other party's share % is configurable per case (default 50)
+ * and can be overridden per expense. "I paid" means they owe their share; "they
+ * paid" means you owe your share (a negative balance); "shared" nets to zero.
+ * See src/data/expense.ts for the math.
+ *
+ * Edit/delete follows the §2 policy: editable fields can change and record an
+ * `editedAt` stamp; createdAt and the hash-chain anchors are never mutated.
  */
 import { useCallback, useState } from "react";
 import {
@@ -18,10 +23,18 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect } from "expo-router";
-import { Body, Button, Card, H2, Muted } from "@/components/ui";
+import {
+  Body,
+  Button,
+  Card,
+  DateTimeField,
+  H2,
+  Muted,
+} from "@/components/ui";
 import { colors, radius, spacing } from "@/theme";
 import { store, uid } from "@/data/store";
-import { fmtMoney } from "@/report/buildReport";
+import { balanceLabel, fmtMoney } from "@/report/buildReport";
+import { clampPct, owedFor } from "@/data/expense";
 import type { Attachment, Expense, ExpenseSplit } from "@/data/types";
 
 const SPLITS: { kind: ExpenseSplit; label: string }[] = [
@@ -30,25 +43,31 @@ const SPLITS: { kind: ExpenseSplit; label: string }[] = [
   { kind: "they_paid", label: "They paid" },
 ];
 
-function owedFor(split: ExpenseSplit, amountCents: number): number {
-  // 50/50 assumption for MVP.
-  return split === "i_paid" ? Math.round(amountCents / 2) : 0;
-}
+const emptyForm = () => ({
+  desc: "",
+  amount: "",
+  split: "i_paid" as ExpenseSplit,
+  overrideText: "",
+  attachments: [] as Attachment[],
+  occurredAt: new Date().toISOString(),
+});
 
 export default function Expenses() {
   const [caseId, setCaseId] = useState<string | null>(null);
+  const [sharePct, setSharePct] = useState(50);
+  const [sharePctText, setSharePctText] = useState("50");
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [balance, setBalance] = useState(0);
 
-  const [desc, setDesc] = useState("");
-  const [amount, setAmount] = useState("");
-  const [split, setSplit] = useState<ExpenseSplit>("i_paid");
-  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm());
 
   const load = useCallback(async () => {
     const c = await store.getCase();
     if (!c) return;
     setCaseId(c.id);
+    setSharePct(c.otherPartySharePct);
+    setSharePctText(String(c.otherPartySharePct));
     setExpenses(await store.getExpenses(c.id));
     setBalance(await store.getBalanceOwedCents(c.id));
   }, []);
@@ -59,55 +78,133 @@ export default function Expenses() {
     }, [load])
   );
 
+  async function commitSharePct() {
+    const pct = clampPct(parseInt(sharePctText, 10));
+    setSharePct(pct);
+    setSharePctText(String(pct));
+    await store.updateCase({ otherPartySharePct: pct });
+    // Note: existing expenses keep their saved owedToMeCents; only new/edited
+    // ones use the new default. This preserves the audit trail.
+  }
+
   async function pickReceipt() {
     const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.7 });
     if (!res.canceled && res.assets[0]) {
-      setAttachments((a) => [...a, { id: uid(), uri: res.assets[0].uri }]);
+      const uri = res.assets[0].uri;
+      setForm((f) => ({ ...f, attachments: [...f.attachments, { id: uid(), uri }] }));
     }
   }
 
-  async function add() {
-    if (!caseId) return;
-    const dollars = parseFloat(amount.replace(/[^0-9.]/g, ""));
-    if (!desc.trim() || isNaN(dollars) || dollars <= 0) return;
-    const amountCents = Math.round(dollars * 100);
-    const now = new Date().toISOString();
-    await store.addExpense({
-      id: uid(),
-      caseId,
-      description: desc.trim(),
-      amountCents,
-      split,
-      owedToMeCents: owedFor(split, amountCents),
-      attachments,
-      occurredAt: now,
-      createdAt: now,
+  function effectiveSharePct(): number {
+    const override = parseInt(form.overrideText, 10);
+    return Number.isNaN(override) ? sharePct : clampPct(override);
+  }
+
+  function startEdit(e: Expense) {
+    setEditId(e.id);
+    setForm({
+      desc: e.description,
+      amount: (e.amountCents / 100).toFixed(2),
+      split: e.split,
+      overrideText: e.sharePctOverride != null ? String(e.sharePctOverride) : "",
+      attachments: e.attachments,
+      occurredAt: e.occurredAt,
     });
-    setDesc("");
-    setAmount("");
-    setAttachments([]);
-    setSplit("i_paid");
+  }
+
+  function cancelEdit() {
+    setEditId(null);
+    setForm(emptyForm());
+  }
+
+  async function submit() {
+    if (!caseId) return;
+    const dollars = parseFloat(form.amount.replace(/[^0-9.]/g, ""));
+    if (!form.desc.trim() || isNaN(dollars) || dollars <= 0) return;
+    const amountCents = Math.round(dollars * 100);
+    const overrideNum = parseInt(form.overrideText, 10);
+    const sharePctOverride = Number.isNaN(overrideNum)
+      ? undefined
+      : clampPct(overrideNum);
+    const pct = sharePctOverride ?? sharePct;
+    const owedToMeCents = owedFor(form.split, amountCents, pct);
+
+    if (editId) {
+      await store.updateExpense(editId, {
+        description: form.desc.trim(),
+        amountCents,
+        split: form.split,
+        sharePctOverride,
+        owedToMeCents,
+        attachments: form.attachments,
+        occurredAt: form.occurredAt,
+      });
+    } else {
+      await store.addExpense({
+        id: uid(),
+        caseId,
+        description: form.desc.trim(),
+        amountCents,
+        split: form.split,
+        sharePctOverride,
+        owedToMeCents,
+        attachments: form.attachments,
+        occurredAt: form.occurredAt,
+        createdAt: new Date().toISOString(),
+      });
+    }
+    cancelEdit();
     load();
   }
+
+  async function remove(id: string) {
+    await store.deleteExpense(id);
+    if (editId === id) cancelEdit();
+    load();
+  }
+
+  const previewOwed = (() => {
+    const dollars = parseFloat(form.amount.replace(/[^0-9.]/g, ""));
+    if (isNaN(dollars) || dollars <= 0) return null;
+    return owedFor(form.split, Math.round(dollars * 100), effectiveSharePct());
+  })();
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Card style={{ backgroundColor: colors.accent }}>
-        <Text style={styles.balLabel}>Balance owed to you</Text>
-        <Text style={styles.balAmount}>{fmtMoney(balance)}</Text>
+        <Text style={styles.balLabel}>{balanceLabel(balance)}</Text>
+        <Text style={styles.balAmount}>{fmtMoney(Math.abs(balance))}</Text>
       </Card>
 
-      <H2>Add an expense</H2>
+      <Card>
+        <Body>Their share of shared costs</Body>
+        <Muted>
+          Default percentage the other parent is responsible for. Applies to new
+          and edited expenses.
+        </Muted>
+        <View style={styles.pctRow}>
+          <TextInput
+            value={sharePctText}
+            onChangeText={setSharePctText}
+            onBlur={commitSharePct}
+            keyboardType="number-pad"
+            style={[styles.input, styles.pctInput]}
+          />
+          <Text style={styles.pctSign}>%</Text>
+        </View>
+      </Card>
+
+      <H2>{editId ? "Edit expense" : "Add an expense"}</H2>
       <TextInput
-        value={desc}
-        onChangeText={setDesc}
+        value={form.desc}
+        onChangeText={(desc) => setForm((f) => ({ ...f, desc }))}
         placeholder="e.g. Soccer registration"
         placeholderTextColor={colors.textMuted}
         style={styles.input}
       />
       <TextInput
-        value={amount}
-        onChangeText={setAmount}
+        value={form.amount}
+        onChangeText={(amount) => setForm((f) => ({ ...f, amount }))}
         placeholder="Amount, e.g. 120.00"
         placeholderTextColor={colors.textMuted}
         keyboardType="decimal-pad"
@@ -115,11 +212,11 @@ export default function Expenses() {
       />
       <View style={styles.chips}>
         {SPLITS.map((s) => {
-          const on = split === s.kind;
+          const on = form.split === s.kind;
           return (
             <Pressable
               key={s.kind}
-              onPress={() => setSplit(s.kind)}
+              onPress={() => setForm((f) => ({ ...f, split: s.kind }))}
               style={[styles.chip, on && styles.chipOn]}
             >
               <Text style={[styles.chipText, on && styles.chipTextOn]}>
@@ -129,14 +226,64 @@ export default function Expenses() {
           );
         })}
       </View>
+
+      <View style={{ height: spacing.sm }} />
+      <Body>Override their share for this expense (optional)</Body>
+      <View style={styles.pctRow}>
+        <TextInput
+          value={form.overrideText}
+          onChangeText={(overrideText) => setForm((f) => ({ ...f, overrideText }))}
+          placeholder={String(sharePct)}
+          placeholderTextColor={colors.textMuted}
+          keyboardType="number-pad"
+          style={[styles.input, styles.pctInput]}
+        />
+        <Text style={styles.pctSign}>%</Text>
+      </View>
+
+      <View style={{ height: spacing.md }} />
+      <DateTimeField
+        label="When was this expense?"
+        value={form.occurredAt}
+        onChange={(occurredAt) => setForm((f) => ({ ...f, occurredAt }))}
+      />
+
+      <View style={{ height: spacing.md }} />
       <Button label="📎 Attach receipt" variant="secondary" onPress={pickReceipt} />
       <View style={styles.thumbs}>
-        {attachments.map((a) => (
-          <Image key={a.id} source={{ uri: a.uri }} style={styles.thumb} />
+        {form.attachments.map((a) => (
+          <Pressable
+            key={a.id}
+            onLongPress={() =>
+              setForm((f) => ({
+                ...f,
+                attachments: f.attachments.filter((x) => x.id !== a.id),
+              }))
+            }
+          >
+            <Image source={{ uri: a.uri }} style={styles.thumb} />
+          </Pressable>
         ))}
       </View>
+
+      {previewOwed != null ? (
+        <Muted>
+          {previewOwed > 0
+            ? `They will owe you ${fmtMoney(previewOwed)}`
+            : previewOwed < 0
+            ? `You will owe them ${fmtMoney(Math.abs(previewOwed))}`
+            : "Nets to zero"}
+        </Muted>
+      ) : null}
+
       <View style={{ height: spacing.sm }} />
-      <Button label="Add expense" onPress={add} />
+      <Button label={editId ? "Save changes" : "Add expense"} onPress={submit} />
+      {editId ? (
+        <>
+          <View style={{ height: spacing.sm }} />
+          <Button label="Cancel" variant="ghost" onPress={cancelEdit} />
+        </>
+      ) : null}
 
       <View style={{ height: spacing.lg }} />
       <H2>Logged expenses</H2>
@@ -144,15 +291,27 @@ export default function Expenses() {
         <Muted>Nothing logged yet.</Muted>
       ) : (
         expenses.map((e) => (
-          <Card key={e.id}>
-            <Body>
-              {e.description} — {fmtMoney(e.amountCents)}
-            </Body>
-            <Muted>
-              {e.split} · owed to you {fmtMoney(e.owedToMeCents)} ·{" "}
-              {new Date(e.occurredAt).toLocaleDateString()}
-            </Muted>
-          </Card>
+          <Pressable key={e.id} onPress={() => startEdit(e)}>
+            <Card>
+              <Body>
+                {e.description} — {fmtMoney(e.amountCents)}
+              </Body>
+              <Muted>
+                {e.split} ·{" "}
+                {e.owedToMeCents >= 0
+                  ? `owed to you ${fmtMoney(e.owedToMeCents)}`
+                  : `you owe ${fmtMoney(Math.abs(e.owedToMeCents))}`}{" "}
+                · {new Date(e.occurredAt).toLocaleDateString()}
+                {e.editedAt ? " · edited" : ""}
+              </Muted>
+              <View style={{ height: spacing.sm }} />
+              <Button
+                label="Delete"
+                variant="danger"
+                onPress={() => remove(e.id)}
+              />
+            </Card>
+          </Pressable>
         ))
       )}
     </ScrollView>
@@ -173,6 +332,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     color: colors.text,
   },
+  pctRow: { flexDirection: "row", alignItems: "center", gap: spacing.sm },
+  pctInput: { width: 90 },
+  pctSign: { fontSize: 18, color: colors.text, marginTop: spacing.sm },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm, marginVertical: spacing.sm },
   chip: {
     paddingVertical: spacing.sm,

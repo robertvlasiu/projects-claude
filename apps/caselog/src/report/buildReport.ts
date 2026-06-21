@@ -35,6 +35,15 @@ export function fmtMoney(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+/**
+ * Human label for a net balance. Positive = the other party owes the user;
+ * negative = the user owes the other party. Pair with fmtMoney(Math.abs(...)).
+ */
+export function balanceLabel(netCents: number): string {
+  if (netCents < 0) return "You owe the other parent";
+  return "Balance owed to you";
+}
+
 export interface ReportData {
   profile: CaseProfile;
   incidents: IncidentEntry[];

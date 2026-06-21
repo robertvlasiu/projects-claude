@@ -3,18 +3,19 @@
  * timeline, and quick actions into the three log types + export.
  */
 import { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { router, useFocusEffect } from "expo-router";
 import { Body, Button, Card, H1, H2, Muted } from "@/components/ui";
 import { colors, spacing } from "@/theme";
 import { store } from "@/data/store";
-import { fmtMoney } from "@/report/buildReport";
+import { balanceLabel, fmtMoney } from "@/report/buildReport";
 import type { CaseProfile, IncidentEntry } from "@/data/types";
 
 export default function Dashboard() {
   const [profile, setProfile] = useState<CaseProfile | null>(null);
   const [incidents, setIncidents] = useState<IncidentEntry[]>([]);
   const [balance, setBalance] = useState(0);
+  const [integrityOk, setIntegrityOk] = useState(true);
   const [ready, setReady] = useState(false);
 
   useFocusEffect(
@@ -26,14 +27,16 @@ export default function Dashboard() {
           router.replace("/onboarding");
           return;
         }
-        const [inc, bal] = await Promise.all([
+        const [inc, bal, integrity] = await Promise.all([
           store.getIncidents(c.id),
           store.getBalanceOwedCents(c.id),
+          store.verifyIntegrity(c.id),
         ]);
         if (!active) return;
         setProfile(c);
         setIncidents(inc);
         setBalance(bal);
+        setIntegrityOk(integrity.ok);
         setReady(true);
       })();
       return () => {
@@ -52,9 +55,19 @@ export default function Dashboard() {
       </Muted>
 
       <Card style={{ marginTop: spacing.lg, backgroundColor: colors.primary }}>
-        <Text style={styles.balanceLabel}>Balance owed to you</Text>
-        <Text style={styles.balanceAmount}>{fmtMoney(balance)}</Text>
+        <Text style={styles.balanceLabel}>{balanceLabel(balance)}</Text>
+        <Text style={styles.balanceAmount}>{fmtMoney(Math.abs(balance))}</Text>
       </Card>
+
+      {!integrityOk ? (
+        <Card style={{ backgroundColor: "#FBE9E9", borderColor: colors.danger }}>
+          <Body>⚠️ Record integrity check failed</Body>
+          <Muted>
+            The tamper-evidence chain doesn't match. This can happen if storage
+            was edited outside the app.
+          </Muted>
+        </Card>
+      ) : null}
 
       <View style={styles.actions}>
         <Button label="＋ Log incident" onPress={() => router.push("/incident")} />
@@ -83,12 +96,18 @@ export default function Dashboard() {
         <Muted>No incidents logged yet. Tap “Log incident” to start.</Muted>
       ) : (
         incidents.slice(0, 10).map((i) => (
-          <Card key={i.id}>
-            <Body>{i.title}</Body>
-            <Muted>
-              {new Date(i.occurredAt).toLocaleString()} · {i.category}
-            </Muted>
-          </Card>
+          <Pressable
+            key={i.id}
+            onPress={() => router.push({ pathname: "/incident", params: { id: i.id } })}
+          >
+            <Card>
+              <Body>{i.title}</Body>
+              <Muted>
+                {new Date(i.occurredAt).toLocaleString()} · {i.category}
+                {i.editedAt ? " · edited" : ""}
+              </Muted>
+            </Card>
+          </Pressable>
         ))
       )}
     </ScrollView>
