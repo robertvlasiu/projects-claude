@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Caselog",
+    "slug": "caselog",
+    "scheme": "caselog",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#1B2A4A"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.example.caselog"
+    },
+    "android": {
+      "package": "com.example.caselog"
+    },
+    "plugins": ["expo-router", "expo-image-picker"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
