@@ -38,6 +38,8 @@ export interface Drill {
   description: string;
   durationSeconds: number;
   category: 'warmup' | 'dinking' | 'thirds' | 'driving' | 'full';
+  steps: string[];
+  focus: string;
 }
 
 export type RootTabParamList = {

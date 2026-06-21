@@ -168,43 +168,43 @@ export default function LogMatchScreen() {
         {/* Score — stepper buttons */}
         <View style={styles.section}>
           <Text style={styles.sectionLabel}>Score</Text>
+          {/* Labels row */}
+          <View style={styles.scoreLabelsRow}>
+            <Text style={styles.scorePlayerLabel}>You</Text>
+            <Text style={styles.scorePlayerLabel}>Them</Text>
+          </View>
+          {/* Steppers row */}
           <View style={styles.scoreRow}>
-            <View style={styles.scoreBox}>
-              <Text style={styles.scorePlayerLabel}>You</Text>
-              <View style={styles.stepper}>
-                <TouchableOpacity
-                  style={styles.stepBtn}
-                  onPress={() => setMyScore((s) => Math.max(0, s - 1))}
-                >
-                  <Text style={styles.stepBtnText}>−</Text>
-                </TouchableOpacity>
-                <Text style={[styles.stepValue, isWon && { color: colors.win }]}>{myScore}</Text>
-                <TouchableOpacity
-                  style={styles.stepBtn}
-                  onPress={() => setMyScore((s) => Math.min(99, s + 1))}
-                >
-                  <Text style={styles.stepBtnText}>+</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.stepper}>
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => setMyScore((s) => Math.max(0, s - 1))}
+              >
+                <Text style={styles.stepBtnText}>−</Text>
+              </TouchableOpacity>
+              <Text style={[styles.stepValue, isWon && { color: colors.win }]}>{myScore}</Text>
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => setMyScore((s) => Math.min(99, s + 1))}
+              >
+                <Text style={styles.stepBtnText}>+</Text>
+              </TouchableOpacity>
             </View>
             <Text style={styles.scoreDash}>–</Text>
-            <View style={styles.scoreBox}>
-              <Text style={styles.scorePlayerLabel}>Them</Text>
-              <View style={styles.stepper}>
-                <TouchableOpacity
-                  style={styles.stepBtn}
-                  onPress={() => setOppScore((s) => Math.max(0, s - 1))}
-                >
-                  <Text style={styles.stepBtnText}>−</Text>
-                </TouchableOpacity>
-                <Text style={[styles.stepValue, !isWon && !isTied && { color: colors.loss }]}>{oppScore}</Text>
-                <TouchableOpacity
-                  style={styles.stepBtn}
-                  onPress={() => setOppScore((s) => Math.min(99, s + 1))}
-                >
-                  <Text style={styles.stepBtnText}>+</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.stepper}>
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => setOppScore((s) => Math.max(0, s - 1))}
+              >
+                <Text style={styles.stepBtnText}>−</Text>
+              </TouchableOpacity>
+              <Text style={[styles.stepValue, !isWon && !isTied && { color: colors.loss }]}>{oppScore}</Text>
+              <TouchableOpacity
+                style={styles.stepBtn}
+                onPress={() => setOppScore((s) => Math.min(99, s + 1))}
+              >
+                <Text style={styles.stepBtnText}>+</Text>
+              </TouchableOpacity>
             </View>
           </View>
           <View style={[
@@ -368,21 +368,26 @@ const styles = StyleSheet.create({
     height: 90,
     paddingTop: spacing.sm + 2,
   },
-  scoreRow: {
+  scoreLabelsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xl,
-    marginBottom: spacing.md,
+    justifyContent: 'space-around',
+    marginBottom: spacing.xs,
   },
-  scoreBox: { alignItems: 'center' },
   scorePlayerLabel: {
     fontSize: font.sm,
     color: colors.textSecondary,
     fontWeight: '600',
-    marginBottom: spacing.sm,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
+    textAlign: 'center',
+    flex: 1,
+  },
+  scoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.lg,
+    marginBottom: spacing.md,
   },
   stepper: {
     flexDirection: 'row',
@@ -411,7 +416,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     letterSpacing: -1,
   },
-  scoreDash: { fontSize: font.xxl, color: colors.textMuted, marginTop: 22 },
+  scoreDash: { fontSize: font.xxl, color: colors.textMuted },
   resultBadge: {
     borderRadius: radius.full,
     paddingVertical: spacing.xs + 2,

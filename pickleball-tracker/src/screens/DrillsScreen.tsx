@@ -182,11 +182,34 @@ export default function DrillsScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.modalContent}>
-              <View style={styles.catTagModal}>
-                <Text style={styles.catTagText}>{CATEGORY_LABELS[activeDrill.category]}</Text>
+              <View style={styles.modalTags}>
+                <View style={styles.catTagModal}>
+                  <Text style={styles.catTagText}>{CATEGORY_LABELS[activeDrill.category]}</Text>
+                </View>
+                <View style={[styles.catTagModal, styles.focusTag]}>
+                  <Text style={styles.catTagText}>⏱ {formatDuration(activeDrill.durationSeconds)}</Text>
+                </View>
               </View>
               <Text style={styles.modalDrillName}>{activeDrill.name}</Text>
+              {activeDrill.focus ? (
+                <Text style={styles.focusText}>{activeDrill.focus}</Text>
+              ) : null}
               <Text style={styles.modalDesc}>{activeDrill.description}</Text>
+
+              {/* Step-by-step instructions */}
+              {activeDrill.steps?.length ? (
+                <View style={styles.stepsCard}>
+                  <Text style={styles.stepsTitle}>How to run it</Text>
+                  {activeDrill.steps.map((step, i) => (
+                    <View key={i} style={styles.stepRow}>
+                      <View style={styles.stepNum}>
+                        <Text style={styles.stepNumText}>{i + 1}</Text>
+                      </View>
+                      <Text style={styles.stepText}>{step}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
 
               {/* Timer ring + display */}
               {finished ? (
@@ -265,6 +288,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     marginRight: spacing.xs,
+    flexShrink: 0,
   },
   catBtnActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
   catText: { fontSize: font.sm, color: colors.textSecondary, fontWeight: '500' },
@@ -314,27 +338,69 @@ const styles = StyleSheet.create({
   },
   modalClose: { fontSize: font.md, color: colors.textSecondary },
   modalContent: { padding: spacing.xl, alignItems: 'center' },
+  modalTags: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   catTagModal: {
     backgroundColor: colors.primaryLight,
     paddingHorizontal: spacing.md,
     paddingVertical: 4,
     borderRadius: radius.full,
-    marginBottom: spacing.md,
   },
+  focusTag: { backgroundColor: colors.accentLight },
   modalDrillName: {
     fontSize: font.xxl,
     fontWeight: '800',
     color: colors.text,
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    marginBottom: spacing.xs,
+  },
+  focusText: {
+    fontSize: font.sm,
+    color: colors.textMuted,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
   modalDesc: {
     fontSize: font.md,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.lg,
   },
+  stepsCard: {
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'flex-start',
+  },
+  stepsTitle: {
+    fontSize: font.md,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: spacing.md,
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  stepNum: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  stepNumText: { fontSize: font.xs, fontWeight: '800', color: colors.primaryDark },
+  stepText: { flex: 1, fontSize: font.sm, color: colors.textSecondary, lineHeight: 20 },
   timerBlock: { alignItems: 'center', marginBottom: spacing.lg },
   timerDisplay: {
     fontSize: 96,

@@ -7,6 +7,14 @@ export const BUILT_IN_DRILLS: Drill[] = [
     description: 'Stand at the kitchen line and rally cross-court with a partner. Keep it slow and controlled. Focus on staying low and resetting.',
     durationSeconds: 300,
     category: 'warmup',
+    focus: 'Soft hands · Consistency · Warm-up',
+    steps: [
+      'Both players at the kitchen line, diagonally across.',
+      'Start with slow, arcing dinks — aim 6–12 inches over the net.',
+      'Stay low: bend your knees, not your back.',
+      'Keep your paddle up and in front at all times.',
+      'Count consecutive rallies. Try to beat your record.',
+    ],
   },
   {
     id: 'dink-pattern',
@@ -14,6 +22,14 @@ export const BUILT_IN_DRILLS: Drill[] = [
     description: 'Alternate between cross-court and down-the-line dinks in a set pattern: 3 cross, 1 line. Build speed gradually.',
     durationSeconds: 300,
     category: 'dinking',
+    focus: 'Shot placement · Pattern play · Control',
+    steps: [
+      'Both at kitchen. Decide who starts the pattern.',
+      'Hit 3 cross-court dinks, then redirect 1 down-the-line.',
+      'The other player returns and resets to 3 cross, 1 line.',
+      'Gradually increase pace as you get comfortable.',
+      'Switch sides every 90 seconds to practice both angles.',
+    ],
   },
   {
     id: 'third-shot-drop',
@@ -21,6 +37,14 @@ export const BUILT_IN_DRILLS: Drill[] = [
     description: 'From the baseline, serve then practice your third shot drop into the kitchen. Goal: land 8 of 10 in the kitchen.',
     durationSeconds: 600,
     category: 'thirds',
+    focus: 'Third shot · Transition game · Soft game',
+    steps: [
+      'Start at the baseline. Partner feeds from near the kitchen.',
+      'Contact the ball below net height — use an upward, scooping motion.',
+      'Aim for the kitchen (Non-Volley Zone), not just over the net.',
+      'After each drop, move toward the kitchen line.',
+      'Track your makes: target 8 of every 10 in the kitchen.',
+    ],
   },
   {
     id: 'erne-practice',
@@ -28,6 +52,14 @@ export const BUILT_IN_DRILLS: Drill[] = [
     description: 'Practice the Erne — step wide around the kitchen corner to volley. Set up the shot with 2 cross-court dinks then execute.',
     durationSeconds: 300,
     category: 'dinking',
+    focus: 'Erne shot · Footwork · Court awareness',
+    steps: [
+      'Begin a dink rally cross-court with your partner.',
+      'Hit 2 controlled cross-court dinks to set up your attack.',
+      'On shot 3, step wide AROUND the kitchen corner (not through the kitchen).',
+      'Volley the ball aggressively from outside the court.',
+      'Reset and repeat. Switch who attempts the Erne each round.',
+    ],
   },
   {
     id: 'reset-drill',
@@ -35,6 +67,14 @@ export const BUILT_IN_DRILLS: Drill[] = [
     description: 'Partner drives at you hard. Your job: reset into the kitchen every time. No counter-driving. Just soft hands.',
     durationSeconds: 420,
     category: 'thirds',
+    focus: 'Defensive reset · Soft hands · Composure',
+    steps: [
+      'You stand at the transition zone (mid-court). Partner at kitchen.',
+      'Partner drives the ball at you with pace — mix up locations.',
+      'Absorb the pace: loosen your grip, block softly back into the kitchen.',
+      'No counter-attacking. Every ball should land in the NVZ.',
+      'Switch roles after 2 minutes. Focus on staying calm under fire.',
+    ],
   },
   {
     id: 'speed-up-drill',
@@ -42,6 +82,14 @@ export const BUILT_IN_DRILLS: Drill[] = [
     description: 'Alternate who speeds up from the kitchen. The other player must block back softly. Switch every 10 reps.',
     durationSeconds: 300,
     category: 'driving',
+    focus: 'Speed-up attacks · Hands speed · Blocking',
+    steps: [
+      'Both players at the kitchen in a dink rally.',
+      'Player A attacks (speeds up) at Player B\'s body or shoulders.',
+      'Player B blocks softly back to Player A — aim for the kitchen.',
+      'Continue until the rally ends, then Player B attacks.',
+      'Switch who attacks every 10 reps. Track how many you each win.',
+    ],
   },
   {
     id: 'serve-return',
@@ -49,6 +97,14 @@ export const BUILT_IN_DRILLS: Drill[] = [
     description: 'Server: work on deep placement (targets at the baseline corners). Returner: deep return then immediately move to the kitchen.',
     durationSeconds: 600,
     category: 'full',
+    focus: 'Serve placement · Return positioning · Transition',
+    steps: [
+      'Server: aim for the corners of the baseline. Vary spin and speed.',
+      'Returner: take the ball early if possible, send it deep.',
+      'Returner: IMMEDIATELY move to the kitchen after the return.',
+      'Play out the point from there — focus on getting to the kitchen.',
+      'Rotate server every 5 points. Notice which serve placements cause problems.',
+    ],
   },
   {
     id: 'lob-overhead',
@@ -56,5 +112,13 @@ export const BUILT_IN_DRILLS: Drill[] = [
     description: 'One player dinks and occasionally lobs. The other must read the lob early, back up, and put away the overhead.',
     durationSeconds: 300,
     category: 'driving',
+    focus: 'Overhead · Lob reading · Footwork',
+    steps: [
+      'Player A dinks from kitchen. Player B dinks and watches for the lob.',
+      'Player A randomly throws in a lob — no warning.',
+      'Player B: turn sideways immediately, back up quickly with crossover steps.',
+      'Player B hits an overhead — aim for open court or at Player A\'s feet.',
+      'Reset to kitchen and repeat. Switch roles every 3 minutes.',
+    ],
   },
 ];
