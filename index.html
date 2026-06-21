@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>App Previews</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0f1320;
+      color: #f4f6f9;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px;
+    }
+    h1 { font-size: 30px; margin: 0 0 6px; }
+    .sub { color: #9aa3b5; margin: 0 0 36px; text-align: center; max-width: 600px; line-height: 1.5; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 340px)); gap: 20px; justify-content: center; max-width: 760px; width: 100%; }
+    a.card {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      border-radius: 18px;
+      padding: 26px;
+      border: 1px solid rgba(255,255,255,0.08);
+      transition: transform .15s ease, border-color .15s ease;
+    }
+    a.card:hover { transform: translateY(-3px); border-color: rgba(255,255,255,0.28); }
+    .steady   { background: linear-gradient(160deg, #0F3D3E, #14524f); }
+    .caselog  { background: linear-gradient(160deg, #1B2A4A, #2a3c63); }
+    .pickle   { background: linear-gradient(160deg, #1d4e3a, #2f7d4f); }
+    .flock    { background: linear-gradient(160deg, #6b4a1f, #a9772f); }
+    .tag { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }
+    .name { font-size: 23px; font-weight: 700; margin: 6px 0 10px; }
+    .desc { color: #d3d9e4; line-height: 1.5; font-size: 14.5px; }
+    .open { margin-top: 16px; font-weight: 600; }
+    .note {
+      margin-top: 40px; max-width: 620px; text-align: center;
+      color: #8089a0; font-size: 13px; line-height: 1.6;
+    }
+    footer { margin-top: auto; padding-top: 40px; color: #5d6678; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>App previews</h1>
+  <p class="sub">Live web builds of four B2C mobile apps. Same React&nbsp;Native codebases exported to the web for a quick look — open any on your phone or desktop.</p>
+
+  <div class="cards">
+    <a class="card steady" href="./steady/">
+      <div class="tag">Reactive dogs · subscription</div>
+      <div class="name">Steady 🐾</div>
+      <div class="desc">Training + reaction tracking for owners of reactive dogs. Onboarding, protocol library, one-handed Walk Mode, and a progress view that proves improvement.</div>
+      <div class="open">Open Steady →</div>
+    </a>
+
+    <a class="card caselog" href="./caselog/">
+      <div class="tag">Co-parenting · subscription</div>
+      <div class="name">Caselog ⚖️</div>
+      <div class="desc">A "document your side" evidence log for high-conflict co-parents: timestamped incidents, an expense ledger with running balance, a custody-exchange log, and a PDF report for your attorney.</div>
+      <div class="open">Open Caselog →</div>
+    </a>
+
+    <a class="card pickle" href="./pickleball/">
+      <div class="tag">Pickleball · tracker</div>
+      <div class="name">Pickleball Tracker 🎾</div>
+      <div class="desc">Log matches, track skills and stats over time, and work through drills to improve your game.</div>
+      <div class="open">Open Pickleball →</div>
+    </a>
+
+    <a class="card flock" href="./flock/">
+      <div class="tag">Backyard chickens · tracker</div>
+      <div class="name">Flock Tracker 🐔</div>
+      <div class="desc">Manage your backyard chickens: birds, egg logs, feed, health records, and hatch tracking — all in one place.</div>
+      <div class="open">Open Flock →</div>
+    </a>
+  </div>
+
+  <p class="note">⚠️ Web preview only. Native-only features (Face ID, photo/receipt picker, PDF export, haptics, in-app purchases) are no-ops in the browser — they work in the real iOS/Android builds. This is for seeing the screens and flow, not the final product.</p>
+
+  <footer>Built with Expo · exported to static web for GitHub Pages</footer>
+</body>
+</html>
