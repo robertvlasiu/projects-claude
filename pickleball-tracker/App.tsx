@@ -2,6 +2,7 @@ import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Text, ScrollView, View, Platform } from 'react-native';
 import RootNavigator from './src/navigation';
+import OnboardingModal from './src/components/OnboardingModal';
 
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -33,6 +34,7 @@ const inner = (
   <ErrorBoundary>
     <SafeAreaProvider>
       <RootNavigator />
+      <OnboardingModal />
     </SafeAreaProvider>
   </ErrorBoundary>
 );

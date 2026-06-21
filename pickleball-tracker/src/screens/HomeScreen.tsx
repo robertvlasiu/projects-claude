@@ -76,19 +76,56 @@ export default function HomeScreen() {
       >
         {/* Empty state */}
         {matches.length === 0 && (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyEmoji}>🏓</Text>
-            <Text style={styles.emptyTitle}>Log your first match</Text>
-            <Text style={styles.emptyText}>
-              Track your scores, rate your shots, and watch your game improve over time.
-            </Text>
+          <>
             <TouchableOpacity
-              style={styles.emptyBtn}
+              style={styles.firstMatchCta}
               onPress={() => navigation.navigate('LogMatch', {})}
+              activeOpacity={0.85}
             >
-              <Text style={styles.emptyBtnText}>Log a Match</Text>
+              <Text style={styles.firstMatchEmoji}>🏓</Text>
+              <View style={styles.firstMatchText}>
+                <Text style={styles.firstMatchTitle}>Log Your First Match</Text>
+                <Text style={styles.firstMatchSub}>Takes less than 60 seconds →</Text>
+              </View>
             </TouchableOpacity>
-          </View>
+
+            <Text style={styles.howItWorksTitle}>How it works</Text>
+
+            {[
+              {
+                emoji: '📋',
+                title: 'Log a match',
+                desc: 'Score, opponent, location, and rate your 6 shots (serve, return, dink, drop, drive, overhead) after each game.',
+              },
+              {
+                emoji: '📊',
+                title: 'See your skill report',
+                desc: 'After 3+ matches your Shot Skills screen shows your strongest and weakest shots with color-coded bars.',
+              },
+              {
+                emoji: '⏱',
+                title: 'Drill the weak spots',
+                desc: '8 focused drills with a built-in countdown timer. Finish a drill and it\'s logged automatically.',
+              },
+            ].map((f) => (
+              <View key={f.title} style={styles.featureRow}>
+                <View style={styles.featureIcon}>
+                  <Text style={styles.featureEmoji}>{f.emoji}</Text>
+                </View>
+                <View style={styles.featureText}>
+                  <Text style={styles.featureTitle}>{f.title}</Text>
+                  <Text style={styles.featureDesc}>{f.desc}</Text>
+                </View>
+              </View>
+            ))}
+
+            <View style={styles.tipCard}>
+              <Text style={styles.tipTitle}>💡 Pro tip</Text>
+              <Text style={styles.tipText}>
+                Rate your shots 1–5 after every match. In just 5 matches, you'll see a full breakdown of where your game needs work.
+              </Text>
+            </View>
+          </>
         )}
 
         {/* Recent matches */}
@@ -164,30 +201,63 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
 
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.xxxl,
+  firstMatchCta: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     marginBottom: spacing.xl,
+    gap: spacing.md,
     ...shadow.md,
   },
-  emptyEmoji: { fontSize: 52, marginBottom: spacing.md },
-  emptyTitle: { fontSize: font.xl, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
-  emptyText: {
-    fontSize: font.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
+  firstMatchEmoji: { fontSize: 36 },
+  firstMatchText: { flex: 1 },
+  firstMatchTitle: { fontSize: font.lg, fontWeight: '800', color: '#fff' },
+  firstMatchSub: { fontSize: font.sm, color: 'rgba(255,255,255,0.75)', marginTop: 3 },
+  howItWorksTitle: {
+    fontSize: font.sm,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: spacing.md,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  featureIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  featureEmoji: { fontSize: 22 },
+  featureText: { flex: 1 },
+  featureTitle: { fontSize: font.md, fontWeight: '700', color: colors.text, marginBottom: 3 },
+  featureDesc: { fontSize: font.sm, color: colors.textSecondary, lineHeight: 20 },
+  tipCard: {
+    backgroundColor: colors.accentLight,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginTop: spacing.sm,
     marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
   },
-  emptyBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.md,
-    borderRadius: radius.full,
-  },
-  emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: font.md },
+  tipTitle: { fontSize: font.sm, fontWeight: '700', color: '#92400E', marginBottom: 4 },
+  tipText: { fontSize: font.sm, color: '#78350F', lineHeight: 20 },
 
   drillBanner: {
     flexDirection: 'row',

@@ -7,6 +7,7 @@ interface AppState {
   matches: Match[];
   drillSessions: DrillSession[];
   isPremium: boolean;
+  hasSeenOnboarding: boolean;
 
   addMatch: (match: Match) => void;
   updateMatch: (match: Match) => void;
@@ -14,6 +15,7 @@ interface AppState {
   addDrillSession: (session: DrillSession) => void;
   deleteDrillSession: (id: string) => void;
   setIsPremium: (val: boolean) => void;
+  completeOnboarding: () => void;
 }
 
 const FREE_MATCH_LIMIT = 15;
@@ -24,6 +26,7 @@ export const useStore = create<AppState>()(
       matches: [],
       drillSessions: [],
       isPremium: false,
+      hasSeenOnboarding: false,
 
       addMatch: (match) =>
         set((state) => {
@@ -50,6 +53,7 @@ export const useStore = create<AppState>()(
         })),
 
       setIsPremium: (val) => set({ isPremium: val }),
+      completeOnboarding: () => set({ hasSeenOnboarding: true }),
     }),
     {
       name: 'pickleball-tracker-storage',

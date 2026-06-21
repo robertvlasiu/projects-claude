@@ -12,6 +12,7 @@ interface AppState {
   feedLogs: FeedLog[];
   hatchBatches: HatchBatch[];
   isPremium: boolean;
+  hasSeenOnboarding: boolean;
 
   addBird: (bird: Bird) => void;
   updateBird: (bird: Bird) => void;
@@ -33,6 +34,7 @@ interface AppState {
   deleteHatchBatch: (id: string) => void;
 
   setIsPremium: (val: boolean) => void;
+  completeOnboarding: () => void;
 }
 
 export const useStore = create<AppState>()(
@@ -44,6 +46,7 @@ export const useStore = create<AppState>()(
       feedLogs: [],
       hatchBatches: [],
       isPremium: false,
+      hasSeenOnboarding: false,
 
       addBird: (bird) =>
         set((state) => {
@@ -93,6 +96,7 @@ export const useStore = create<AppState>()(
         set((state) => ({ hatchBatches: state.hatchBatches.filter((b) => b.id !== id) })),
 
       setIsPremium: (val) => set({ isPremium: val }),
+      completeOnboarding: () => set({ hasSeenOnboarding: true }),
     }),
     {
       name: 'flock-tracker-storage',

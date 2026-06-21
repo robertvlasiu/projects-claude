@@ -99,19 +99,61 @@ export default function HomeScreen() {
 
         {/* Empty state */}
         {birds.length === 0 && (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyEmoji}>🐔</Text>
-            <Text style={styles.emptyTitle}>Add your first bird</Text>
-            <Text style={styles.emptyText}>
-              Track each hen's production, health records, and more.
-            </Text>
+          <>
             <TouchableOpacity
-              style={styles.emptyBtn}
+              style={styles.firstBirdCta}
               onPress={() => navigation.navigate('AddBird', {})}
+              activeOpacity={0.85}
             >
-              <Text style={styles.emptyBtnText}>Add a Bird</Text>
+              <Text style={styles.firstBirdEmoji}>🐔</Text>
+              <View style={styles.firstBirdTextCol}>
+                <Text style={styles.firstBirdTitle}>Add Your First Bird</Text>
+                <Text style={styles.firstBirdSub}>Name, breed, hatch date, and more →</Text>
+              </View>
             </TouchableOpacity>
-          </View>
+
+            <Text style={styles.howItWorksTitle}>What you can track</Text>
+
+            {[
+              {
+                emoji: '🥚',
+                title: 'Daily egg production',
+                desc: "Tap a number to log today's eggs. See 30-day charts, laying rates, and your personal best day.",
+              },
+              {
+                emoji: '💊',
+                title: 'Health records per bird',
+                desc: 'Log checkups, illnesses, and treatments for each bird. A colored dot on the card shows recent health events.',
+              },
+              {
+                emoji: '🌾',
+                title: 'Feed cost tracking',
+                desc: 'Record feed purchases and the app calculates your cost per dozen eggs automatically.',
+              },
+              {
+                emoji: '🐣',
+                title: 'Incubation batches',
+                desc: 'Set a hatch date and the app shows a live countdown and progress bar right on your home screen.',
+              },
+            ].map((f) => (
+              <View key={f.title} style={styles.featureRow}>
+                <View style={styles.featureIcon}>
+                  <Text style={styles.featureEmoji}>{f.emoji}</Text>
+                </View>
+                <View style={styles.featureText}>
+                  <Text style={styles.featureTitle}>{f.title}</Text>
+                  <Text style={styles.featureDesc}>{f.desc}</Text>
+                </View>
+              </View>
+            ))}
+
+            <View style={styles.tipCard}>
+              <Text style={styles.tipTitle}>💡 Start here</Text>
+              <Text style={styles.tipText}>
+                Add each of your birds first — just name, breed, and sex. Then head to the Eggs tab to log today's collection.
+              </Text>
+            </View>
+          </>
         )}
 
         {/* Incubating batches */}
@@ -241,32 +283,63 @@ const styles = StyleSheet.create({
   summaryValue: { fontSize: font.xl, fontWeight: '800', color: colors.text },
   summaryLabel: { fontSize: font.xs, color: colors.textMuted, marginTop: 2, textAlign: 'center' },
 
-  emptyCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.xxxl,
+  firstBirdCta: {
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
     marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
+    gap: spacing.md,
     ...shadow.md,
   },
-  emptyEmoji: { fontSize: 52, marginBottom: spacing.md },
-  emptyTitle: { fontSize: font.xl, fontWeight: '700', color: colors.text, marginBottom: spacing.sm },
-  emptyText: {
-    fontSize: font.md,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
+  firstBirdEmoji: { fontSize: 36 },
+  firstBirdTextCol: { flex: 1 },
+  firstBirdTitle: { fontSize: font.lg, fontWeight: '800', color: '#fff' },
+  firstBirdSub: { fontSize: font.sm, color: 'rgba(255,255,255,0.75)', marginTop: 3 },
+  howItWorksTitle: {
+    fontSize: font.sm,
+    fontWeight: '700',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: spacing.md,
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  featureIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  featureEmoji: { fontSize: 22 },
+  featureText: { flex: 1 },
+  featureTitle: { fontSize: font.md, fontWeight: '700', color: colors.text, marginBottom: 3 },
+  featureDesc: { fontSize: font.sm, color: colors.textSecondary, lineHeight: 20 },
+  tipCard: {
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.md,
+    padding: spacing.lg,
+    marginTop: spacing.xs,
     marginBottom: spacing.xl,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
   },
-  emptyBtn: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.md,
-    borderRadius: radius.full,
-  },
-  emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: font.md },
+  tipTitle: { fontSize: font.sm, fontWeight: '700', color: colors.primaryDark, marginBottom: 4 },
+  tipText: { fontSize: font.sm, color: colors.primaryDark, lineHeight: 20, opacity: 0.85 },
 
   section: { marginBottom: spacing.lg },
   sectionTitle: {
