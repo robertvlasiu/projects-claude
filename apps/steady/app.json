@@ -20,7 +20,12 @@
     },
     "plugins": ["expo-router"],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "baseUrl": "/projects-claude/steady"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
     }
   }
 }
