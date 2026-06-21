@@ -16,6 +16,7 @@ import {
   getEggStatsForPeriod,
   formatDateShort,
   generateId,
+  getEggStreak,
 } from '../utils/helpers';
 
 export default function EggLogScreen() {
@@ -28,6 +29,7 @@ export default function EggLogScreen() {
   const todayLog = eggLogs.find((l) => l.date === selectedDate);
   const stats7 = getEggStatsForPeriod(eggLogs, 7);
   const stats30 = getEggStatsForPeriod(eggLogs, 30);
+  const streak = getEggStreak(eggLogs);
 
   const last30 = getLast30DaysKeys();
   const logMap: Record<string, number> = {};
@@ -61,6 +63,12 @@ export default function EggLogScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+        {streak > 0 && (
+          <View style={styles.streakBanner}>
+            <Text style={styles.streakBannerText}>🔥 {streak}-day logging streak! Keep it going.</Text>
+          </View>
+        )}
 
         {/* Stats row */}
         <View style={styles.statsRow}>
@@ -221,6 +229,16 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: font.xxl, fontWeight: '800', color: colors.text },
   content: { padding: spacing.xl, paddingTop: spacing.xs },
+  streakBanner: {
+    backgroundColor: '#FFF3CD',
+    borderRadius: radius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    alignItems: 'center',
+  },
+  streakBannerText: { fontSize: font.sm, fontWeight: '700', color: colors.primaryDark },
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,

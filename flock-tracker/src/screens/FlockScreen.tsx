@@ -41,14 +41,16 @@ export default function FlockScreen() {
       <View style={[styles.header, { paddingTop: insets.top + spacing.md }]}>
         <Text style={styles.title}>My Flock</Text>
         <TouchableOpacity
-          style={[styles.addBtn, atLimit && styles.addBtnDisabled]}
+          style={[styles.addBtn, atLimit && styles.addBtnLimit]}
           onPress={() => {
-            if (atLimit) return;
-            navigation.navigate('AddBird', {});
+            if (atLimit) {
+              navigation.navigate('Upgrade');
+            } else {
+              navigation.navigate('AddBird', {});
+            }
           }}
-          disabled={atLimit}
         >
-          <Text style={styles.addBtnText}>+ Add Bird</Text>
+          <Text style={styles.addBtnText}>{atLimit ? '⭐ Upgrade' : '+ Add Bird'}</Text>
         </TouchableOpacity>
       </View>
 
@@ -65,11 +67,15 @@ export default function FlockScreen() {
       </View>
 
       {atLimit && (
-        <View style={styles.limitBanner}>
+        <TouchableOpacity
+          style={styles.limitBanner}
+          onPress={() => navigation.navigate('Upgrade')}
+          activeOpacity={0.8}
+        >
           <Text style={styles.limitText}>
-            Free plan: {FREE_BIRD_LIMIT_EXPORT} birds max. Upgrade for unlimited flock tracking →
+            Free plan: {FREE_BIRD_LIMIT_EXPORT} birds max. Tap to unlock unlimited flock tracking →
           </Text>
-        </View>
+        </TouchableOpacity>
       )}
 
       <FlatList
@@ -122,6 +128,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   addBtnDisabled: { backgroundColor: colors.textMuted },
+  addBtnLimit: { backgroundColor: colors.secondary },
   addBtnText: { color: '#fff', fontWeight: '700', fontSize: font.sm },
   filterRow: {
     flexDirection: 'row',

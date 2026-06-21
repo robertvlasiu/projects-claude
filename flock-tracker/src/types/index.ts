@@ -65,4 +65,6 @@ export type RootStackParamList = {
   AddBird: { birdId?: string };
   BirdDetail: { birdId: string };
   AddHealth: { birdId: string };
+  Upgrade: undefined;
+  Settings: undefined;
 };

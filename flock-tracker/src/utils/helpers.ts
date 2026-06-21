@@ -65,6 +65,30 @@ export const getLast30DaysKeys = (): string[] => {
   return keys;
 };
 
+export const getEggStreak = (logs: EggLog[]): number => {
+  if (logs.length === 0) return 0;
+  const logDates = new Set(logs.map((l) => l.date));
+  const check = new Date();
+  if (!logDates.has(toDateKey(check))) {
+    check.setDate(check.getDate() - 1);
+  }
+  let streak = 0;
+  while (logDates.has(toDateKey(check))) {
+    streak++;
+    check.setDate(check.getDate() - 1);
+  }
+  return streak;
+};
+
+export const buildEggLogsCsv = (logs: EggLog[]): string => {
+  const header = 'Date,Eggs,Notes';
+  const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date));
+  const rows = sorted.map(
+    (l) => `${l.date},${l.count},"${(l.notes ?? '').replace(/"/g, '""')}"`
+  );
+  return [header, ...rows].join('\n');
+};
+
 export const BREED_OPTIONS = [
   'Rhode Island Red',
   'Buff Orpington',

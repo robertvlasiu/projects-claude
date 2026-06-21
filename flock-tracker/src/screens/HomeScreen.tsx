@@ -11,7 +11,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useStore } from '../store';
 import { colors, spacing, radius, font, shadow } from '../constants/theme';
-import { toDateKey, getEggStatsForPeriod, formatDateShort } from '../utils/helpers';
+import { toDateKey, getEggStatsForPeriod, formatDateShort, getEggStreak } from '../utils/helpers';
 import { RootStackParamList } from '../types';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -24,6 +24,7 @@ export default function HomeScreen() {
   const today = toDateKey();
   const todayLog = eggLogs.find((l) => l.date === today);
   const todayCount = todayLog?.count ?? 0;
+  const streak = getEggStreak(eggLogs);
 
   const activeHens = birds.filter((b) => b.isActive && b.sex === 'hen').length;
   const activeBirds = birds.filter((b) => b.isActive).length;
@@ -48,12 +49,20 @@ export default function HomeScreen() {
             <Text style={styles.greeting}>Good morning 🌅</Text>
             <Text style={styles.title}>Your Flock</Text>
           </View>
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() => navigation.navigate('AddBird', {})}
-          >
-            <Text style={styles.addBtnText}>+ Bird</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={styles.iconBtn}
+              onPress={() => navigation.navigate('Settings')}
+            >
+              <Text style={styles.iconBtnText}>⚙️</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.addBtn}
+              onPress={() => navigation.navigate('AddBird', {})}
+            >
+              <Text style={styles.addBtnText}>+ Bird</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Egg hero inside header */}
@@ -69,6 +78,11 @@ export default function HomeScreen() {
             </View>
           </View>
           <View style={styles.heroRight}>
+            {streak > 0 && (
+              <View style={styles.streakBadge}>
+                <Text style={styles.streakText}>🔥 {streak}-day streak</Text>
+              </View>
+            )}
             <Text style={styles.heroPeriodLabel}>7-day avg</Text>
             <Text style={styles.heroAvg}>{stats7.daily}/day</Text>
             <Text style={styles.heroPeriodLabel}>30-day total</Text>
@@ -231,6 +245,16 @@ const styles = StyleSheet.create({
   },
   greeting: { fontSize: font.sm, color: 'rgba(255,255,255,0.7)', marginBottom: 3, fontWeight: '500' },
   title: { fontSize: font.xxxl, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radius.full,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  iconBtnText: { fontSize: 18 },
   addBtn: {
     backgroundColor: 'rgba(255,255,255,0.2)',
     borderWidth: 1.5,
@@ -257,6 +281,14 @@ const styles = StyleSheet.create({
   heroCount: { fontSize: 48, fontWeight: '800', color: '#fff', lineHeight: 52 },
   heroSub: { fontSize: font.xs, color: 'rgba(255,255,255,0.65)' },
   heroRight: { alignItems: 'flex-end', gap: 2 },
+  streakBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    marginBottom: spacing.sm,
+  },
+  streakText: { fontSize: font.xs, color: '#fff', fontWeight: '700' },
   heroPeriodLabel: { fontSize: font.xs, color: 'rgba(255,255,255,0.6)' },
   heroAvg: { fontSize: font.xl, fontWeight: '800', color: '#fff', marginBottom: spacing.sm },
   heroTotal: { fontSize: font.lg, fontWeight: '700', color: '#fff' },

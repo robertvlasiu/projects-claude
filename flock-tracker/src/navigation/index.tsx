@@ -15,6 +15,8 @@ import HatchScreen from '../screens/HatchScreen';
 import AddBirdScreen from '../screens/AddBirdScreen';
 import BirdDetailScreen from '../screens/BirdDetailScreen';
 import AddHealthScreen from '../screens/AddHealthScreen';
+import UpgradeScreen from '../screens/UpgradeScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -82,6 +84,12 @@ export default function RootNavigator() {
           component={AddHealthScreen}
           options={{ presentation: 'modal' }}
         />
+        <Stack.Screen
+          name="Upgrade"
+          component={UpgradeScreen}
+          options={{ presentation: 'modal' }}
+        />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
