@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Confirm your Auris account</title>
+</head>
+<body style="margin:0;padding:0;background:#f0f4ff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f0f4ff;padding:48px 0;">
+    <tr>
+      <td align="center">
+        <table width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;">
+
+          <!-- Logo -->
+          <tr>
+            <td align="center" style="padding-bottom:32px;">
+              <table cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="background:#4f46e5;width:44px;height:44px;border-radius:12px;text-align:center;vertical-align:middle;">
+                    <span style="color:#fff;font-size:24px;font-weight:800;line-height:44px;">A</span>
+                  </td>
+                  <td style="padding-left:10px;vertical-align:middle;">
+                    <span style="font-size:26px;font-weight:800;color:#1e1b4b;letter-spacing:-0.5px;">Auris</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Card -->
+          <tr>
+            <td style="background:#ffffff;border-radius:20px;padding:48px 40px;box-shadow:0 4px 24px rgba(99,102,241,0.08);">
+
+              <h1 style="margin:0 0 8px;font-size:26px;font-weight:800;color:#1e1b4b;letter-spacing:-0.5px;">
+                Confirm your email
+              </h1>
+              <p style="margin:0 0 32px;font-size:15px;color:#94a3b8;line-height:1.6;">
+                You're one step away from securing your case. Click the button below to verify your email address and activate your Auris account.
+              </p>
+
+              <!-- CTA Button -->
+              <table cellpadding="0" cellspacing="0" width="100%">
+                <tr>
+                  <td align="center">
+                    <a href="{{ .ConfirmationURL }}"
+                       style="display:inline-block;background:#4f46e5;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;padding:16px 40px;border-radius:14px;letter-spacing:0.1px;">
+                      Confirm my account
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Divider -->
+              <table cellpadding="0" cellspacing="0" width="100%" style="margin:36px 0 0;">
+                <tr>
+                  <td style="border-top:1px solid #f1f5f9;padding-top:28px;">
+                    <p style="margin:0 0 6px;font-size:12px;color:#cbd5e1;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;">
+                      Or copy this link
+                    </p>
+                    <p style="margin:0;font-size:12px;color:#94a3b8;word-break:break-all;line-height:1.6;">
+                      {{ .ConfirmationURL }}
+                    </p>
+                  </td>
+                </tr>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="padding-top:28px;">
+              <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.8;">
+                If you didn't create an Auris account, you can safely ignore this email.<br/>
+                Your divorce, documented. Private, organized, protected.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
