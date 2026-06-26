@@ -4,23 +4,77 @@ import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } 
 import { Calendar } from 'react-native-calendars';
 import AttachmentPicker from '../components/AttachmentPicker';
 import Chip from '../components/Chip';
+import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FAB from '../components/FAB';
 import FormModal, { Field, inputStyle, textAreaStyle } from '../components/FormModal';
 import ScreenHeader from '../components/ScreenHeader';
 import { useRecords } from '../hooks/useRecords';
+import { CustodyPattern, generateCustodyDates, WEEKDAY_LABELS } from '../lib/custodyPatterns';
 import { requestNotificationPermissions, scheduleEventNotification } from '../lib/notifications';
 import { CustodyEvent } from '../types';
 
 const EVENT_TYPES = ['Scheduled', 'Handoff', 'Violation', 'Makeup', 'Other'];
 const TYPE_COLORS: Record<string, string> = { Scheduled: '#4f46e5', Handoff: '#10b981', Violation: '#ef4444', Makeup: '#f97316', Other: '#64748b' };
 
+type RepeatKind = 'weekdays' | 'nth_weekends' | 'alternating_weekends';
+const ORDINALS = [{ v: 1, label: '1st' }, { v: 2, label: '2nd' }, { v: 3, label: '3rd' }, { v: 4, label: '4th' }, { v: 5, label: 'Last' }];
+const MONTH_OPTIONS = [1, 3, 6, 12];
+
 export default function CustodyCalendarScreen({ navigation }: any) {
-  const { records, loading, add, remove } = useRecords<CustodyEvent>('custody_event');
+  const { records, loading, add, addMany, remove } = useRecords<CustodyEvent>('custody_event');
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [selectedDate, setSelectedDate] = useState('');
   const [form, setForm] = useState<Partial<CustodyEvent>>({ with_parent: 'me', type: 'Scheduled', status: 'scheduled', attachment_paths: [] });
+
+  // ── Recurring schedule builder ──────────────────────────────────
+  const [repeatOpen, setRepeatOpen] = useState(false);
+  const [repeatSaving, setRepeatSaving] = useState(false);
+  const [repeatKind, setRepeatKind] = useState<RepeatKind>('weekdays');
+  const [repeatWeekdays, setRepeatWeekdays] = useState<number[]>([]);
+  const [repeatOrdinals, setRepeatOrdinals] = useState<number[]>([1, 2]);
+  const [repeatFriday, setRepeatFriday] = useState(false);
+  const [repeatAnchor, setRepeatAnchor] = useState('');
+  const [repeatParent, setRepeatParent] = useState<'me' | 'other'>('me');
+  const [repeatChildren, setRepeatChildren] = useState('');
+  const [repeatMonths, setRepeatMonths] = useState(3);
+
+  function buildPattern(): CustodyPattern | null {
+    if (repeatKind === 'weekdays') {
+      if (repeatWeekdays.length === 0) return null;
+      return { kind: 'weekdays', weekdays: repeatWeekdays };
+    }
+    if (repeatKind === 'nth_weekends') {
+      if (repeatOrdinals.length === 0) return null;
+      return { kind: 'nth_weekends', ordinals: repeatOrdinals, includeFriday: repeatFriday };
+    }
+    if (!repeatAnchor) return null;
+    return { kind: 'alternating_weekends', anchorSaturday: repeatAnchor, includeFriday: repeatFriday };
+  }
+
+  const previewCount = useMemo(() => {
+    const pattern = buildPattern();
+    if (!pattern) return 0;
+    return generateCustodyDates(pattern, new Date().toISOString().split('T')[0], repeatMonths).length;
+  }, [repeatKind, repeatWeekdays, repeatOrdinals, repeatFriday, repeatAnchor, repeatMonths]);
+
+  async function handleSaveRepeat() {
+    const pattern = buildPattern();
+    if (!pattern) { Alert.alert('Choose a pattern', 'Pick at least one day or weekend for the schedule.'); return; }
+    const dates = generateCustodyDates(pattern, new Date().toISOString().split('T')[0], repeatMonths);
+    if (dates.length === 0) { Alert.alert('Nothing to add', 'That pattern produced no dates in the selected range.'); return; }
+    setRepeatSaving(true);
+    const events: CustodyEvent[] = dates.map(date => ({
+      date, type: 'Scheduled', notes: 'Recurring schedule',
+      with_parent: repeatParent, child_names: repeatChildren, status: 'scheduled', attachment_paths: [],
+    }));
+    const saved = await addMany(events);
+    setRepeatSaving(false);
+    if (saved === 0) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
+    setRepeatOpen(false);
+    Alert.alert('Schedule added', `${saved} custody day${saved === 1 ? '' : 's'} added to your calendar.`);
+  }
 
   const markedDates = useMemo(() => {
     const marks: Record<string, any> = {};
@@ -36,9 +90,10 @@ export default function CustodyCalendarScreen({ navigation }: any) {
   const dayRecords = selectedDate ? records.filter(r => r.date === selectedDate) : records;
 
   async function handleSave() {
-    if (!form.date?.trim()) { Alert.alert('Required', 'Please select a date.'); return; }
+    if (!form.date?.trim()) { Alert.alert('Pick a date', 'Choose the day this custody event happens.'); return; }
     setSaving(true);
-    await add({ date: form.date ?? '', type: form.type ?? 'Scheduled', notes: form.notes ?? '', with_parent: form.with_parent ?? 'me', child_names: form.child_names ?? '', status: form.status ?? 'scheduled', attachment_paths: form.attachment_paths ?? [] });
+    const id = await add({ date: form.date ?? '', type: form.type ?? 'Scheduled', notes: form.notes ?? '', with_parent: form.with_parent ?? 'me', child_names: form.child_names ?? '', status: form.status ?? 'scheduled', attachment_paths: form.attachment_paths ?? [] });
+    if (!id) { setSaving(false); Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
     if (form.type !== 'Violation') {
       const granted = await requestNotificationPermissions();
       if (granted) {
@@ -56,10 +111,15 @@ export default function CustodyCalendarScreen({ navigation }: any) {
 
   return (
     <View style={styles.root}>
-      <ScreenHeader title="Custody Calendar" />
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={18} color="#64748b" /><Text style={styles.backText}>More</Text>
-      </TouchableOpacity>
+      <ScreenHeader
+        title="Custody Calendar"
+        right={
+          <TouchableOpacity style={styles.repeatBtn} onPress={() => setRepeatOpen(true)}>
+            <Ionicons name="repeat" size={16} color="#4f46e5" />
+            <Text style={styles.repeatBtnText}>Repeat</Text>
+          </TouchableOpacity>
+        }
+      />
       <Calendar
         onDayPress={day => setSelectedDate(day.dateString)}
         markedDates={markedDates}
@@ -103,7 +163,7 @@ export default function CustodyCalendarScreen({ navigation }: any) {
       <FAB onPress={() => { setForm(f => ({ ...f, date: selectedDate || new Date().toISOString().split('T')[0] })); setModalOpen(true); }} color="#10b981" />
 
       <FormModal visible={modalOpen} title="Add Custody Event" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
-        <Field label="Date"><TextInput style={inputStyle} value={form.date} onChangeText={v => setForm(f => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" /></Field>
+        <Field label="Date"><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} /></Field>
         <Field label="Type">
           <View style={styles.chips}>{EVENT_TYPES.map(t => <Chip key={t} label={t} selected={form.type === t} onPress={() => setForm(f => ({ ...f, type: t }))} color={TYPE_COLORS[t]} />)}</View>
         </Field>
@@ -119,14 +179,110 @@ export default function CustodyCalendarScreen({ navigation }: any) {
           <AttachmentPicker paths={form.attachment_paths ?? []} onChange={paths => setForm(f => ({ ...f, attachment_paths: paths }))} />
         </Field>
       </FormModal>
+
+      <FormModal
+        visible={repeatOpen}
+        title="Repeating Schedule"
+        onClose={() => setRepeatOpen(false)}
+        onSave={handleSaveRepeat}
+        saving={repeatSaving}
+        saveLabel={previewCount > 0 ? `Add ${previewCount} day${previewCount === 1 ? '' : 's'}` : 'Add to calendar'}
+      >
+        <Text style={styles.repeatIntro}>Set your custody days once and we&apos;ll fill in the calendar ahead.</Text>
+
+        <Field label="These days are">
+          <View style={styles.chips}>
+            <Chip label="With Me" selected={repeatParent === 'me'} onPress={() => setRepeatParent('me')} color="#10b981" />
+            <Chip label="With Other Party" selected={repeatParent === 'other'} onPress={() => setRepeatParent('other')} color="#ef4444" />
+          </View>
+        </Field>
+
+        <Field label="Pattern">
+          <View style={styles.chips}>
+            <Chip label="Specific weekdays" selected={repeatKind === 'weekdays'} onPress={() => setRepeatKind('weekdays')} />
+            <Chip label="Weekends of month" selected={repeatKind === 'nth_weekends'} onPress={() => setRepeatKind('nth_weekends')} />
+            <Chip label="Alternating weekends" selected={repeatKind === 'alternating_weekends'} onPress={() => setRepeatKind('alternating_weekends')} />
+          </View>
+        </Field>
+
+        {repeatKind === 'weekdays' && (
+          <Field label="Which days each week?">
+            <View style={styles.chips}>
+              {WEEKDAY_LABELS.map((label, i) => (
+                <Chip
+                  key={label}
+                  label={label}
+                  selected={repeatWeekdays.includes(i)}
+                  onPress={() => setRepeatWeekdays(d => d.includes(i) ? d.filter(x => x !== i) : [...d, i])}
+                />
+              ))}
+            </View>
+          </Field>
+        )}
+
+        {repeatKind === 'nth_weekends' && (
+          <>
+            <Field label="Which weekends each month?">
+              <View style={styles.chips}>
+                {ORDINALS.map(o => (
+                  <Chip
+                    key={o.v}
+                    label={o.label}
+                    selected={repeatOrdinals.includes(o.v)}
+                    onPress={() => setRepeatOrdinals(d => d.includes(o.v) ? d.filter(x => x !== o.v) : [...d, o.v])}
+                  />
+                ))}
+              </View>
+            </Field>
+            <Field label="Weekend length">
+              <View style={styles.chips}>
+                <Chip label="Sat & Sun" selected={!repeatFriday} onPress={() => setRepeatFriday(false)} />
+                <Chip label="Fri–Sun" selected={repeatFriday} onPress={() => setRepeatFriday(true)} />
+              </View>
+            </Field>
+          </>
+        )}
+
+        {repeatKind === 'alternating_weekends' && (
+          <>
+            <Field label="A Saturday you have them (anchor)">
+              <DateField value={repeatAnchor} onChange={setRepeatAnchor} placeholder="Pick a Saturday" />
+            </Field>
+            <Field label="Weekend length">
+              <View style={styles.chips}>
+                <Chip label="Sat & Sun" selected={!repeatFriday} onPress={() => setRepeatFriday(false)} />
+                <Chip label="Fri–Sun" selected={repeatFriday} onPress={() => setRepeatFriday(true)} />
+              </View>
+            </Field>
+          </>
+        )}
+
+        <Field label="Children (optional)">
+          <TextInput style={inputStyle} value={repeatChildren} onChangeText={setRepeatChildren} placeholder="Child names" />
+        </Field>
+
+        <Field label="Generate for">
+          <View style={styles.chips}>
+            {MONTH_OPTIONS.map(m => (
+              <Chip key={m} label={`${m} mo`} selected={repeatMonths === m} onPress={() => setRepeatMonths(m)} />
+            ))}
+          </View>
+        </Field>
+
+        <Text style={styles.repeatPreview}>
+          {previewCount > 0 ? `This adds ${previewCount} custody day${previewCount === 1 ? '' : 's'}.` : 'Pick a pattern to preview.'}
+        </Text>
+      </FormModal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10 },
-  backText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
+  repeatBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#eef2ff', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20 },
+  repeatBtnText: { fontSize: 13, color: '#4f46e5', fontWeight: '700' },
+  repeatIntro: { fontSize: 13, color: '#64748b', lineHeight: 18 },
+  repeatPreview: { fontSize: 13, color: '#4f46e5', fontWeight: '600', textAlign: 'center', marginTop: 4 },
   calendar: { borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   selectedRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
   selectedDate: { fontSize: 14, fontWeight: '700', color: '#1e1b4b' },

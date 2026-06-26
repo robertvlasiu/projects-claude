@@ -12,31 +12,18 @@ import {
 } from 'react-native';
 import { useRecords } from '../hooks/useRecords';
 import { supabase } from '../lib/supabase';
-import { CourtDate, Expense, Incident } from '../types';
+import { CourtDate, CustodyEvent, Expense, Incident, Reminder } from '../types';
 
-type FeatureTile = {
-  label: string;
+type UpcomingItem = {
+  id: string;
+  date: string;
+  title: string;
+  meta: string;
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
-  bg: string;
   tab: string;
   screen: string;
 };
-
-const TILES: FeatureTile[] = [
-  { label: 'Incidents', icon: 'alert-circle', color: '#ef4444', bg: '#fef2f2', tab: 'Log', screen: 'IncidentLog' },
-  { label: 'Expenses', icon: 'card', color: '#f59e0b', bg: '#fffbeb', tab: 'Finance', screen: 'ExpenseTracker' },
-  { label: 'Documents', icon: 'folder', color: '#3b82f6', bg: '#eff6ff', tab: 'Legal', screen: 'DocumentVault' },
-  { label: 'Calendar', icon: 'calendar', color: '#10b981', bg: '#f0fdf4', tab: 'More', screen: 'CustodyCalendar' },
-  { label: 'Court', icon: 'business', color: '#6366f1', bg: '#eef2ff', tab: 'Legal', screen: 'CourtTimeline' },
-  { label: 'Comms', icon: 'chatbubbles', color: '#8b5cf6', bg: '#f5f3ff', tab: 'Log', screen: 'CommunicationLog' },
-  { label: 'Mood', icon: 'happy', color: '#ec4899', bg: '#fdf2f8', tab: 'Log', screen: 'MoodJournal' },
-  { label: 'Assets', icon: 'bar-chart', color: '#14b8a6', bg: '#f0fdfa', tab: 'Finance', screen: 'AssetInventory' },
-  { label: 'Attorney', icon: 'briefcase', color: '#f97316', bg: '#fff7ed', tab: 'Legal', screen: 'AttorneyNotes' },
-  { label: 'Contacts', icon: 'people', color: '#0ea5e9', bg: '#f0f9ff', tab: 'More', screen: 'Contacts' },
-  { label: 'Reminders', icon: 'notifications', color: '#a855f7', bg: '#faf5ff', tab: 'More', screen: 'Notifications' },
-  { label: 'Export', icon: 'download', color: '#64748b', bg: '#f8fafc', tab: 'More', screen: 'Export' },
-];
 
 function StatPill({ label, value, icon, color }: { label: string; value: string | number; icon: keyof typeof Ionicons.glyphMap; color: string }) {
   return (
@@ -52,20 +39,14 @@ function StatPill({ label, value, icon, color }: { label: string; value: string 
   );
 }
 
-function TileButton({ tile, onPress }: { tile: FeatureTile; onPress: () => void }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  function pressIn() { Animated.spring(scale, { toValue: 0.93, damping: 15, useNativeDriver: true }).start(); }
-  function pressOut() { Animated.spring(scale, { toValue: 1, damping: 15, useNativeDriver: true }).start(); }
-  return (
-    <Animated.View style={[styles.tile, { transform: [{ scale }] }]}>
-      <TouchableOpacity style={styles.tileInner} onPress={onPress} onPressIn={pressIn} onPressOut={pressOut} activeOpacity={1}>
-        <View style={[styles.tileIcon, { backgroundColor: tile.bg }]}>
-          <Ionicons name={tile.icon} size={22} color={tile.color} />
-        </View>
-        <Text style={styles.tileLabel}>{tile.label}</Text>
-      </TouchableOpacity>
-    </Animated.View>
-  );
+function relativeDay(dateStr: string): string {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr + 'T00:00:00');
+  const diff = Math.round((d.getTime() - today.getTime()) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff < 7) return d.toLocaleDateString('en', { weekday: 'long' });
+  return d.toLocaleDateString('en', { month: 'short', day: 'numeric' });
 }
 
 export default function DashboardScreen() {
@@ -74,9 +55,11 @@ export default function DashboardScreen() {
   const { records: incidents } = useRecords<Incident>('incident');
   const { records: expenses } = useRecords<Expense>('expense');
   const { records: courtDates } = useRecords<CourtDate>('court_date');
+  const { records: custody } = useRecords<CustodyEvent>('custody_event');
+  const { records: reminders } = useRecords<Reminder>('reminder');
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const slideAnim = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -84,15 +67,34 @@ export default function DashboardScreen() {
       setName(email.split('@')[0]);
     });
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 450, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 450, useNativeDriver: true }),
     ]).start();
   }, []);
 
   const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
-  const upcoming = courtDates.filter(c => new Date(c.date) >= new Date()).length;
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const upcoming: UpcomingItem[] = [
+    ...courtDates.filter(c => c.date >= todayStr).map(c => ({
+      id: c.id, date: c.date, title: c.title || c.type, meta: c.time ? `Court · ${c.time}` : 'Court',
+      icon: 'business' as const, color: '#6366f1', tab: 'Legal', screen: 'CourtTimeline',
+    })),
+    ...custody.filter(c => c.date >= todayStr).map(c => ({
+      id: c.id, date: c.date, title: `${c.type}${c.child_names ? ` · ${c.child_names}` : ''}`,
+      meta: c.with_parent === 'me' ? 'Custody · with you' : 'Custody · with other party',
+      icon: 'people' as const, color: '#10b981', tab: 'More', screen: 'CustodyCalendar',
+    })),
+    ...reminders.filter(r => !r.completed && r.date >= todayStr).map(r => ({
+      id: r.id, date: r.date, title: r.title, meta: `Reminder · ${r.type}`,
+      icon: 'notifications' as const, color: '#a855f7', tab: 'More', screen: 'Notifications',
+    })),
+  ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
+
+  const upcomingCount = upcoming.length;
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const displayName = name ? name.charAt(0).toUpperCase() + name.slice(1) : 'there';
 
   function goTo(tab: string, screen: string) {
     navigation.navigate(tab, { screen });
@@ -104,46 +106,64 @@ export default function DashboardScreen() {
 
       <Animated.View style={[styles.hero, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
         <LinearGradient colors={['#4f46e5', '#6366f1']} style={styles.heroGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
-          <View style={styles.heroContent}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.heroGreeting}>{greeting},</Text>
-              <Text style={styles.heroName}>{name || 'there'} 👋</Text>
-              <Text style={styles.heroSub}>Your case is organized and private.</Text>
-            </View>
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>🔐</Text>
-            </View>
+          <Text style={styles.heroGreeting}>{greeting},</Text>
+          <Text style={styles.heroName}>{displayName}</Text>
+          <View style={styles.heroEncRow}>
+            <Ionicons name="lock-closed" size={12} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.heroSub}>End-to-end encrypted · only you can read your case</Text>
           </View>
         </LinearGradient>
       </Animated.View>
 
       <Animated.View style={[styles.pillsRow, { opacity: fadeAnim }]}>
         <StatPill label="Incidents" value={incidents.length} icon="alert-circle" color="#ef4444" />
-        <StatPill label="Expenses" value={`$${totalExpenses.toFixed(0)}`} icon="card" color="#f59e0b" />
-        <StatPill label="Upcoming" value={upcoming} icon="calendar" color="#6366f1" />
+        <StatPill label="Spent" value={`$${totalExpenses.toFixed(0)}`} icon="card" color="#f59e0b" />
+        <StatPill label="Upcoming" value={upcomingCount} icon="calendar" color="#6366f1" />
       </Animated.View>
 
       <Animated.View style={[styles.section, { opacity: fadeAnim }]}>
-        <Text style={styles.sectionTitle}>Features</Text>
-        <View style={styles.grid}>
-          {TILES.map(tile => (
-            <TileButton key={tile.label} tile={tile} onPress={() => goTo(tile.tab, tile.screen)} />
-          ))}
-        </View>
+        <Text style={styles.sectionTitle}>Upcoming</Text>
+        {upcoming.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Ionicons name="calendar-outline" size={22} color="#a5b4fc" />
+            <Text style={styles.emptyText}>Nothing scheduled. Court dates, custody days and reminders show up here.</Text>
+          </View>
+        ) : (
+          upcoming.map(item => (
+            <TouchableOpacity key={item.id} style={styles.upcomingCard} onPress={() => goTo(item.tab, item.screen)} activeOpacity={0.7}>
+              <View style={[styles.upIcon, { backgroundColor: item.color + '18' }]}>
+                <Ionicons name={item.icon} size={18} color={item.color} />
+              </View>
+              <View style={styles.upBody}>
+                <Text style={styles.upTitle} numberOfLines={1}>{item.title}</Text>
+                <Text style={styles.upMeta}>{item.meta}</Text>
+              </View>
+              <View style={styles.upDateWrap}>
+                <Text style={[styles.upDate, { color: item.color }]}>{relativeDay(item.date)}</Text>
+              </View>
+            </TouchableOpacity>
+          ))
+        )}
       </Animated.View>
 
       <Animated.View style={[styles.section, { opacity: fadeAnim, marginBottom: 40 }]}>
-        <Text style={styles.sectionTitle}>Quick Log</Text>
-        <TouchableOpacity style={styles.quickBtn} onPress={() => goTo('Log', 'IncidentLog')} activeOpacity={0.8}>
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <TouchableOpacity style={styles.quickBtn} onPress={() => goTo('Log', 'IncidentLog')} activeOpacity={0.85}>
           <LinearGradient colors={['#ef4444', '#f97316']} style={styles.quickGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Ionicons name="add-circle" size={20} color="#fff" />
-            <Text style={styles.quickText}>Log New Incident</Text>
+            <Text style={styles.quickText}>Log an Incident</Text>
           </LinearGradient>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.quickBtn, { marginTop: 10 }]} onPress={() => goTo('Finance', 'ExpenseTracker')} activeOpacity={0.8}>
+        <TouchableOpacity style={[styles.quickBtn, { marginTop: 10 }]} onPress={() => goTo('Finance', 'ExpenseTracker')} activeOpacity={0.85}>
+          <LinearGradient colors={['#f59e0b', '#f97316']} style={styles.quickGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
+            <Ionicons name="add-circle" size={20} color="#fff" />
+            <Text style={styles.quickText}>Track an Expense</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.quickBtn, { marginTop: 10 }]} onPress={() => goTo('Legal', 'CourtTimeline')} activeOpacity={0.85}>
           <LinearGradient colors={['#4f46e5', '#7c3aed']} style={styles.quickGrad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}>
             <Ionicons name="add-circle" size={20} color="#fff" />
-            <Text style={styles.quickText}>Track Expense</Text>
+            <Text style={styles.quickText}>Add a Court Date</Text>
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
@@ -153,16 +173,14 @@ export default function DashboardScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8faff' },
-  scroll: { paddingBottom: 24 },
+  scroll: { paddingBottom: 24, paddingTop: 8 },
 
-  hero: { marginHorizontal: 16, marginTop: 16, borderRadius: 20, overflow: 'hidden', shadowColor: '#4f46e5', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.25, shadowRadius: 20, elevation: 10 },
-  heroGrad: { borderRadius: 20 },
-  heroContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 22 },
+  hero: { marginHorizontal: 16, marginTop: 16, borderRadius: 20, overflow: 'hidden', shadowColor: '#4f46e5', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.22, shadowRadius: 18, elevation: 10 },
+  heroGrad: { borderRadius: 20, padding: 22 },
   heroGreeting: { fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '500', marginBottom: 2 },
-  heroName: { fontSize: 24, fontWeight: '800', color: '#fff', letterSpacing: -0.5, marginBottom: 4 },
-  heroSub: { fontSize: 12, color: 'rgba(255,255,255,0.65)' },
-  heroBadge: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center' },
-  heroBadgeText: { fontSize: 24 },
+  heroName: { fontSize: 26, fontWeight: '800', color: '#fff', letterSpacing: -0.5, marginBottom: 10 },
+  heroEncRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  heroSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)' },
 
   pillsRow: { flexDirection: 'row', marginHorizontal: 16, marginTop: 14, gap: 10 },
   pill: { flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 6, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
@@ -173,11 +191,16 @@ const styles = StyleSheet.create({
   section: { marginTop: 22, marginHorizontal: 16 },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 12 },
 
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  tile: { width: '30.5%' },
-  tileInner: { backgroundColor: '#fff', borderRadius: 16, padding: 14, alignItems: 'center', gap: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
-  tileIcon: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  tileLabel: { fontSize: 11, fontWeight: '700', color: '#374151', textAlign: 'center' },
+  emptyCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#f1f5f9' },
+  emptyText: { flex: 1, fontSize: 13, color: '#94a3b8', lineHeight: 18 },
+
+  upcomingCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 6, elevation: 2, borderWidth: 1, borderColor: '#f1f5f9' },
+  upIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  upBody: { flex: 1 },
+  upTitle: { fontSize: 15, fontWeight: '700', color: '#1e293b', marginBottom: 2 },
+  upMeta: { fontSize: 12, color: '#94a3b8' },
+  upDateWrap: { alignItems: 'flex-end' },
+  upDate: { fontSize: 13, fontWeight: '700' },
 
   quickBtn: { borderRadius: 14, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 },
   quickGrad: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 18, paddingVertical: 16 },

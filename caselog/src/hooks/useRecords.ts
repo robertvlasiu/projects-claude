@@ -43,6 +43,21 @@ export function useRecords<T>(type: string) {
     return data.id;
   }
 
+  /** Insert many records of this type at once. Returns the number saved. */
+  async function addMany(payloads: T[]): Promise<number> {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || payloads.length === 0) return 0;
+    const rows = payloads.map(p => ({
+      user_id: user.id,
+      type,
+      encrypted_data: encrypt(p as object),
+    }));
+    const { data, error } = await supabase.from('records').insert(rows).select('id');
+    if (error || !data) return 0;
+    await load();
+    return data.length;
+  }
+
   async function update(id: string, payload: Partial<T>) {
     const existing = records.find(r => r.id === id);
     if (!existing) return;
@@ -60,5 +75,5 @@ export function useRecords<T>(type: string) {
     setRecords(prev => prev.filter(r => r.id !== id));
   }
 
-  return { records, loading, add, update, remove, reload: load };
+  return { records, loading, add, addMany, update, remove, reload: load };
 }

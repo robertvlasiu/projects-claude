@@ -11,6 +11,22 @@ import MoreStackScreen from './MoreStack';
 
 const Tab = createBottomTabNavigator();
 
+// Each section tab resets to its feature menu when tapped, so tabs always show
+// the list of features — never a deep sub-screen left over from a shortcut.
+const ROOT_SCREEN: Record<string, string> = {
+  Log: 'LogMenu',
+  Legal: 'LegalMenu',
+  Finance: 'FinanceMenu',
+  More: 'MoreMenu',
+};
+
+const resetToMenu = ({ navigation, route }: any) => ({
+  tabPress: () => {
+    const root = ROOT_SCREEN[route.name];
+    if (root) navigation.navigate(route.name, { screen: root });
+  },
+});
+
 export default function TabNavigator() {
   return (
     <Tab.Navigator
@@ -45,10 +61,10 @@ export default function TabNavigator() {
       })}
     >
       <Tab.Screen name="Dashboard" component={DashboardScreen} />
-      <Tab.Screen name="Log" component={LogStackScreen} />
-      <Tab.Screen name="Legal" component={LegalStackScreen} />
-      <Tab.Screen name="Finance" component={FinanceStackScreen} />
-      <Tab.Screen name="More" component={MoreStackScreen} />
+      <Tab.Screen name="Log" component={LogStackScreen} listeners={resetToMenu} />
+      <Tab.Screen name="Legal" component={LegalStackScreen} listeners={resetToMenu} />
+      <Tab.Screen name="Finance" component={FinanceStackScreen} listeners={resetToMenu} />
+      <Tab.Screen name="More" component={MoreStackScreen} listeners={resetToMenu} />
     </Tab.Navigator>
   );
 }
