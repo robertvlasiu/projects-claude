@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -17,26 +18,44 @@ type Props = {
   onClose: () => void;
   onSave: () => void;
   saving?: boolean;
+  saveLabel?: string;
   children: React.ReactNode;
 };
 
-export default function FormModal({ visible, title, onClose, onSave, saving, children }: Props) {
+export default function FormModal({ visible, title, onClose, onSave, saving, saveLabel = 'Save', children }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <View style={styles.handle} />
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
+          <TouchableOpacity onPress={onClose} style={styles.cancelBtn} hitSlop={8}>
             <Ionicons name="close" size={22} color="#64748b" />
           </TouchableOpacity>
           <Text style={styles.title}>{title}</Text>
-          <TouchableOpacity onPress={onSave} style={[styles.saveBtn, saving && styles.saveBtnDisabled]} disabled={saving}>
-            <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save'}</Text>
-          </TouchableOpacity>
+          <View style={styles.cancelBtn} />
         </View>
         <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
+        {/* Primary action sits at the bottom — within easy thumb reach, mirroring the + button. */}
+        <View style={styles.footer}>
+          <View style={styles.encRow}>
+            <Ionicons name="lock-closed" size={12} color="#94a3b8" />
+            <Text style={styles.encText}>Encrypted on your device before it&apos;s saved</Text>
+          </View>
+          <TouchableOpacity
+            onPress={onSave}
+            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+            disabled={saving}
+            activeOpacity={0.85}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.saveText}>{saveLabel}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -79,11 +98,23 @@ const styles = StyleSheet.create({
   },
   cancelBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 17, fontWeight: '700', color: '#1e1b4b' },
-  saveBtn: { backgroundColor: '#4f46e5', borderRadius: 10, paddingVertical: 8, paddingHorizontal: 16 },
-  saveBtnDisabled: { opacity: 0.6 },
-  saveText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   body: { flex: 1 },
   bodyContent: { padding: 20, gap: 16 },
+  footer: {
+    paddingHorizontal: 20, paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 16,
+    borderTopWidth: 1, borderTopColor: '#f1f5f9', backgroundColor: '#fff', gap: 10,
+  },
+  encRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  encText: { fontSize: 11, color: '#94a3b8' },
+  saveBtn: {
+    height: 52, borderRadius: 14, backgroundColor: '#4f46e5',
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#4f46e5', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3, shadowRadius: 10, elevation: 6,
+  },
+  saveBtnDisabled: { opacity: 0.6 },
+  saveText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });
 
 const fieldStyles = StyleSheet.create({

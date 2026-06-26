@@ -26,10 +26,11 @@ export default function ContactsScreen({ navigation }: any) {
   const [form, setForm] = useState<Partial<Contact>>({ role: 'Attorney' });
 
   async function handleSave() {
-    if (!form.name?.trim()) { Alert.alert('Required', 'Name is required.'); return; }
+    if (!form.name?.trim()) { Alert.alert('Add a name', 'A contact needs a name.'); return; }
     setSaving(true);
-    await add({ name: form.name ?? '', role: form.role ?? 'Other', phone: form.phone ?? '', email: form.email ?? '', address: form.address ?? '', firm: form.firm ?? '', notes: form.notes ?? '' });
+    const id = await add({ name: form.name ?? '', role: form.role ?? 'Other', phone: form.phone ?? '', email: form.email ?? '', address: form.address ?? '', firm: form.firm ?? '', notes: form.notes ?? '' });
     setSaving(false);
+    if (!id) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
     setModalOpen(false);
     setForm({ role: 'Attorney' });
   }
@@ -37,9 +38,6 @@ export default function ContactsScreen({ navigation }: any) {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Contacts" />
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={18} color="#64748b" /><Text style={styles.backText}>More</Text>
-      </TouchableOpacity>
       <FlatList
         data={records}
         keyExtractor={r => r.id}
@@ -89,8 +87,6 @@ export default function ContactsScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10 },
-  backText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
   list: { padding: 16, gap: 12 },
   emptyContainer: { flex: 1 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#94a3b8', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 2 },

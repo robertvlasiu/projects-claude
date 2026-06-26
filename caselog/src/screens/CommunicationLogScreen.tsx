@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AttachmentPicker from '../components/AttachmentPicker';
 import Chip from '../components/Chip';
+import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FAB from '../components/FAB';
 import FormModal, { Field, inputStyle, textAreaStyle } from '../components/FormModal';
@@ -34,10 +35,11 @@ export default function CommunicationLogScreen({ navigation }: any) {
   const [form, setForm] = useState<Partial<Communication>>({ date: new Date().toISOString().split('T')[0], method: 'call', tone: 'neutral', attachment_paths: [] });
 
   async function handleSave() {
-    if (!form.party?.trim() || !form.summary?.trim()) { Alert.alert('Required', 'Party and summary are required.'); return; }
+    if (!form.summary?.trim()) { Alert.alert('Add a summary', 'Note what was said or agreed so this log is useful later.'); return; }
     setSaving(true);
-    await add({ date: form.date ?? '', time: new Date().toTimeString().slice(0, 5), method: form.method ?? 'call', party: form.party ?? '', summary: form.summary ?? '', tone: form.tone ?? 'neutral', duration: form.duration ?? '', attachment_paths: form.attachment_paths ?? [] });
+    const id = await add({ date: form.date || new Date().toISOString().split('T')[0], time: new Date().toTimeString().slice(0, 5), method: form.method ?? 'call', party: form.party ?? '', summary: form.summary ?? '', tone: form.tone ?? 'neutral', duration: form.duration ?? '', attachment_paths: form.attachment_paths ?? [] });
     setSaving(false);
+    if (!id) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
     setModalOpen(false);
     setForm({ date: new Date().toISOString().split('T')[0], method: 'call', tone: 'neutral', attachment_paths: [] });
   }
@@ -45,9 +47,6 @@ export default function CommunicationLogScreen({ navigation }: any) {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Communications" />
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={18} color="#64748b" /><Text style={styles.backText}>Case Log</Text>
-      </TouchableOpacity>
       <FlatList
         data={records}
         keyExtractor={r => r.id}
@@ -81,11 +80,11 @@ export default function CommunicationLogScreen({ navigation }: any) {
       <FAB onPress={() => setModalOpen(true)} color="#8b5cf6" />
 
       <FormModal visible={modalOpen} title="Log Communication" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
-        <Field label="Date"><TextInput style={inputStyle} value={form.date} onChangeText={v => setForm(f => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" /></Field>
+        <Field label="Date"><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} /></Field>
         <Field label="Method">
           <View style={styles.chips}>{METHODS.map(m => <Chip key={m.value} label={m.label} selected={form.method === m.value} onPress={() => setForm(f => ({ ...f, method: m.value }))} />)}</View>
         </Field>
-        <Field label="With (party) *"><TextInput style={inputStyle} value={form.party} onChangeText={v => setForm(f => ({ ...f, party: v }))} placeholder="Ex-spouse, their attorney..." /></Field>
+        <Field label="With (party)"><TextInput style={inputStyle} value={form.party} onChangeText={v => setForm(f => ({ ...f, party: v }))} placeholder="Ex-spouse, their attorney..." /></Field>
         <Field label="Summary *"><TextInput style={textAreaStyle} value={form.summary} onChangeText={v => setForm(f => ({ ...f, summary: v }))} placeholder="What was discussed?" multiline /></Field>
         <Field label="Tone">
           <View style={styles.chips}>{TONES.map(t => <Chip key={t.value} label={t.label} selected={form.tone === t.value} onPress={() => setForm(f => ({ ...f, tone: t.value }))} color={t.color} />)}</View>
@@ -101,8 +100,6 @@ export default function CommunicationLogScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10 },
-  backText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
   list: { padding: 16, gap: 12 },
   emptyContainer: { flex: 1 },
   card: { backgroundColor: '#fff', borderRadius: 16, flexDirection: 'row', overflow: 'hidden', shadowColor: '#94a3b8', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 2 },

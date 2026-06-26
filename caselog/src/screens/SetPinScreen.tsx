@@ -1,8 +1,12 @@
-import * as LocalAuthentication from 'expo-local-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
+import { Alert, Animated, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import { savePin } from '../lib/pin';
+import {
+  authenticateBiometric,
+  getBiometricSupport,
+  setBiometricEnabled,
+} from '../lib/security';
 
 type Props = {
   onComplete: () => void;
@@ -21,6 +25,7 @@ export default function SetPinScreen({ onComplete }: Props) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  const [biometricType, setBiometricType] = useState<'face' | 'fingerprint' | null>(null);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const dotAnims = [
@@ -31,10 +36,36 @@ export default function SetPinScreen({ onComplete }: Props) {
   ];
 
   useEffect(() => {
-    LocalAuthentication.hasHardwareAsync().then(has => {
-      if (has) LocalAuthentication.isEnrolledAsync().then(setBiometricsAvailable);
+    getBiometricSupport().then(s => {
+      setBiometricsAvailable(s.available);
+      setBiometricType(s.type);
     });
   }, []);
+
+  const biometricLabel = biometricType === 'face' ? 'Face ID' : 'Touch ID';
+
+  async function finish() {
+    // After the PIN is confirmed, offer to turn on biometric unlock for the account.
+    if (biometricsAvailable) {
+      Alert.alert(
+        `Enable ${biometricLabel}?`,
+        `Use ${biometricLabel} to unlock Auris faster. You can change this anytime in Settings.`,
+        [
+          { text: 'Not now', style: 'cancel', onPress: onComplete },
+          {
+            text: `Enable ${biometricLabel}`,
+            onPress: async () => {
+              const ok = await authenticateBiometric(`Enable ${biometricLabel} for Auris`);
+              await setBiometricEnabled(ok);
+              onComplete();
+            },
+          },
+        ]
+      );
+    } else {
+      onComplete();
+    }
+  }
 
   function shake() {
     Vibration.vibrate(400);
@@ -79,7 +110,7 @@ export default function SetPinScreen({ onComplete }: Props) {
       setError('');
     } else {
       if (completed === firstPin) {
-        savePin(completed).then(onComplete);
+        savePin(completed).then(finish);
       } else {
         shake();
         setError("PINs don't match. Try again.");
@@ -142,7 +173,7 @@ export default function SetPinScreen({ onComplete }: Props) {
 
       {biometricsAvailable && (
         <Text style={styles.biometricNote}>
-          Face ID / Touch ID will be available after setting your PIN
+          You can turn on {biometricLabel} right after setting your PIN
         </Text>
       )}
     </View>

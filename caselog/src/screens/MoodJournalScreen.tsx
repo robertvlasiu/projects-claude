@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FormModal, { Field, inputStyle, textAreaStyle } from '../components/FormModal';
 import FAB from '../components/FAB';
@@ -26,8 +27,9 @@ export default function MoodJournalScreen({ navigation }: any) {
 
   async function handleSave() {
     setSaving(true);
-    await add({ date: form.date ?? '', mood: form.mood ?? 3, energy: form.energy ?? 3, notes: form.notes ?? '', triggers: form.triggers ?? '' });
+    const id = await add({ date: form.date || new Date().toISOString().split('T')[0], mood: form.mood ?? 3, energy: form.energy ?? 3, notes: form.notes ?? '', triggers: form.triggers ?? '' });
     setSaving(false);
+    if (!id) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
     setModalOpen(false);
     setForm({ date: new Date().toISOString().split('T')[0], mood: 3, energy: 3 });
   }
@@ -37,9 +39,6 @@ export default function MoodJournalScreen({ navigation }: any) {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Mood Journal" />
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={18} color="#64748b" /><Text style={styles.backText}>Case Log</Text>
-      </TouchableOpacity>
 
       {records.length > 0 && (
         <View style={styles.avgCard}>
@@ -80,7 +79,7 @@ export default function MoodJournalScreen({ navigation }: any) {
       />
       <FAB onPress={() => setModalOpen(true)} color="#ec4899" />
       <FormModal visible={modalOpen} title="Check In" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
-        <Field label="Date"><TextInput style={inputStyle} value={form.date} onChangeText={v => setForm(f => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" /></Field>
+        <Field label="Date"><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} /></Field>
         <Field label="How are you feeling?">
           <View style={styles.moodRow}>
             {MOODS.map(m => (
@@ -109,8 +108,6 @@ export default function MoodJournalScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10 },
-  backText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
   avgCard: { flexDirection: 'row', alignItems: 'center', gap: 14, margin: 16, padding: 16, backgroundColor: '#fff1f2', borderRadius: 16 },
   avgEmoji: { fontSize: 36 },
   avgLabel: { fontSize: 12, color: '#94a3b8', fontWeight: '600' },

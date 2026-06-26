@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AttachmentPicker from '../components/AttachmentPicker';
 import Chip from '../components/Chip';
+import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FAB from '../components/FAB';
 import FormModal, { Field, inputStyle, textAreaStyle } from '../components/FormModal';
@@ -21,9 +22,10 @@ export default function CourtTimelineScreen({ navigation }: any) {
   const [form, setForm] = useState<Partial<CourtDate>>({ date: '', type: 'Hearing', status: 'upcoming', attachment_paths: [] });
 
   async function handleSave() {
-    if (!form.title?.trim() || !form.date?.trim()) { Alert.alert('Required', 'Title and date are required.'); return; }
+    if (!form.title?.trim() || !form.date?.trim()) { Alert.alert('Add a title and date', 'A court date needs at least a title and a date.'); return; }
     setSaving(true);
-    await add({ date: form.date ?? '', time: form.time ?? '', title: form.title ?? '', type: form.type ?? 'Hearing', location: form.location ?? '', notes: form.notes ?? '', status: form.status ?? 'upcoming', attachment_paths: form.attachment_paths ?? [] });
+    const id = await add({ date: form.date ?? '', time: form.time ?? '', title: form.title ?? '', type: form.type ?? 'Hearing', location: form.location ?? '', notes: form.notes ?? '', status: form.status ?? 'upcoming', attachment_paths: form.attachment_paths ?? [] });
+    if (!id) { setSaving(false); Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
     // Schedule 24h-before notification
     if (form.status === 'upcoming') {
       const granted = await requestNotificationPermissions();
@@ -45,9 +47,6 @@ export default function CourtTimelineScreen({ navigation }: any) {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Court Timeline" />
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={18} color="#64748b" /><Text style={styles.backText}>Legal</Text>
-      </TouchableOpacity>
       <FlatList
         data={sorted}
         keyExtractor={r => r.id}
@@ -80,8 +79,8 @@ export default function CourtTimelineScreen({ navigation }: any) {
 
       <FormModal visible={modalOpen} title="Add Court Date" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
         <Field label="Title *"><TextInput style={inputStyle} value={form.title} onChangeText={v => setForm(f => ({ ...f, title: v }))} placeholder="e.g. Custody Hearing" /></Field>
-        <Field label="Date *"><TextInput style={inputStyle} value={form.date} onChangeText={v => setForm(f => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" /></Field>
-        <Field label="Time"><TextInput style={inputStyle} value={form.time} onChangeText={v => setForm(f => ({ ...f, time: v }))} placeholder="HH:MM" /></Field>
+        <Field label="Date *"><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} /></Field>
+        <Field label="Time"><DateField mode="time" value={form.time} onChange={v => setForm(f => ({ ...f, time: v }))} /></Field>
         <Field label="Type">
           <View style={styles.chips}>{TYPES.map(t => <Chip key={t} label={t} selected={form.type === t} onPress={() => setForm(f => ({ ...f, type: t }))} />)}</View>
         </Field>
@@ -100,8 +99,6 @@ export default function CourtTimelineScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10 },
-  backText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
   list: { padding: 16, gap: 12 },
   emptyContainer: { flex: 1 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#94a3b8', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 2 },

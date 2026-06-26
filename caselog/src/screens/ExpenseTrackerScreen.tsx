@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AttachmentPicker from '../components/AttachmentPicker';
 import Chip from '../components/Chip';
+import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FAB from '../components/FAB';
 import FormModal, { Field, inputStyle } from '../components/FormModal';
@@ -22,10 +23,11 @@ export default function ExpenseTrackerScreen({ navigation }: any) {
   const totalExpenses = records.reduce((sum, r) => sum + parseFloat(r.amount || '0'), 0);
 
   async function handleSave() {
-    if (!form.amount?.trim() || !form.description?.trim()) { Alert.alert('Required', 'Amount and description are required.'); return; }
+    if (!form.amount?.trim()) { Alert.alert('Add an amount', 'Enter how much this cost.'); return; }
     setSaving(true);
-    await add({ date: form.date ?? '', amount: form.amount ?? '', category: form.category ?? 'Other', description: form.description ?? '', vendor: form.vendor ?? '', receipt_path: '', attachment_paths: form.attachment_paths ?? [] });
+    const id = await add({ date: form.date || new Date().toISOString().split('T')[0], amount: form.amount ?? '', category: form.category ?? 'Other', description: form.description ?? '', vendor: form.vendor ?? '', receipt_path: '', attachment_paths: form.attachment_paths ?? [] });
     setSaving(false);
+    if (!id) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
     setModalOpen(false);
     setForm({ date: new Date().toISOString().split('T')[0], category: 'Legal', attachment_paths: [] });
   }
@@ -33,10 +35,6 @@ export default function ExpenseTrackerScreen({ navigation }: any) {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Expenses" />
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={18} color="#64748b" />
-        <Text style={styles.backText}>Finance</Text>
-      </TouchableOpacity>
 
       <View style={styles.totalCard}>
         <Text style={styles.totalLabel}>Total Logged</Text>
@@ -68,12 +66,12 @@ export default function ExpenseTrackerScreen({ navigation }: any) {
       <FAB onPress={() => setModalOpen(true)} color="#f59e0b" />
 
       <FormModal visible={modalOpen} title="New Expense" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
-        <Field label="Date"><TextInput style={inputStyle} value={form.date} onChangeText={v => setForm(f => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" /></Field>
+        <Field label="Date"><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} /></Field>
         <Field label="Amount ($) *"><TextInput style={inputStyle} value={form.amount} onChangeText={v => setForm(f => ({ ...f, amount: v }))} placeholder="0.00" keyboardType="decimal-pad" /></Field>
         <Field label="Category">
           <View style={styles.chips}>{CATEGORIES.map(c => <Chip key={c} label={c} selected={form.category === c} onPress={() => setForm(f => ({ ...f, category: c }))} color={CAT_COLORS[c]} />)}</View>
         </Field>
-        <Field label="Description *"><TextInput style={inputStyle} value={form.description} onChangeText={v => setForm(f => ({ ...f, description: v }))} placeholder="What was this for?" /></Field>
+        <Field label="Description"><TextInput style={inputStyle} value={form.description} onChangeText={v => setForm(f => ({ ...f, description: v }))} placeholder="What was this for?" /></Field>
         <Field label="Vendor / Payee"><TextInput style={inputStyle} value={form.vendor} onChangeText={v => setForm(f => ({ ...f, vendor: v }))} placeholder="Attorney, hospital, daycare..." /></Field>
         <Field label="Receipts">
           <AttachmentPicker paths={form.attachment_paths ?? []} onChange={paths => setForm(f => ({ ...f, attachment_paths: paths }))} />
@@ -85,8 +83,6 @@ export default function ExpenseTrackerScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10 },
-  backText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
   totalCard: { margin: 16, padding: 20, backgroundColor: '#fff7ed', borderRadius: 16 },
   totalLabel: { fontSize: 12, color: '#f97316', fontWeight: '600', marginBottom: 4 },
   totalValue: { fontSize: 32, fontWeight: '800', color: '#f97316', letterSpacing: -1 },

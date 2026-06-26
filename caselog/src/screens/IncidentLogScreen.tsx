@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import AttachmentPicker from '../components/AttachmentPicker';
 import Chip from '../components/Chip';
+import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FAB from '../components/FAB';
 import FormModal, { Field, inputStyle, textAreaStyle } from '../components/FormModal';
@@ -28,10 +29,11 @@ export default function IncidentLogScreen({ navigation }: any) {
   function resetForm() { setForm({ date: new Date().toISOString().split('T')[0], severity: 'medium', attachment_paths: [] }); }
 
   async function handleSave() {
-    if (!form.description?.trim()) { Alert.alert('Required', 'Please add a description.'); return; }
+    if (!form.description?.trim()) { Alert.alert('Add a description', 'Briefly note what happened so this entry is useful later.'); return; }
     setSaving(true);
-    await add({ date: form.date ?? '', time: new Date().toTimeString().slice(0, 5), description: form.description ?? '', severity: form.severity ?? 'medium', location: form.location ?? '', witnesses: form.witnesses ?? '', attachment_paths: form.attachment_paths ?? [] });
+    const id = await add({ date: form.date || new Date().toISOString().split('T')[0], time: new Date().toTimeString().slice(0, 5), description: form.description ?? '', severity: form.severity ?? 'medium', location: form.location ?? '', witnesses: form.witnesses ?? '', attachment_paths: form.attachment_paths ?? [] });
     setSaving(false);
+    if (!id) { Alert.alert('Could not save', 'Something went wrong saving your entry. Check your connection and try again.'); return; }
     setModalOpen(false);
     resetForm();
   }
@@ -39,10 +41,6 @@ export default function IncidentLogScreen({ navigation }: any) {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Incident Log" />
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={18} color="#64748b" />
-        <Text style={styles.backText}>Case Log</Text>
-      </TouchableOpacity>
       <FlatList
         data={records}
         keyExtractor={r => r.id}
@@ -73,7 +71,7 @@ export default function IncidentLogScreen({ navigation }: any) {
 
       <FormModal visible={modalOpen} title="New Incident" onClose={() => { setModalOpen(false); resetForm(); }} onSave={handleSave} saving={saving}>
         <Field label="Date">
-          <TextInput style={inputStyle} value={form.date} onChangeText={v => setForm(f => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" />
+          <DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} />
         </Field>
         <Field label="Description *">
           <TextInput style={textAreaStyle} value={form.description} onChangeText={v => setForm(f => ({ ...f, description: v }))} placeholder="What happened?" multiline />
@@ -99,8 +97,6 @@ export default function IncidentLogScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10 },
-  backText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
   list: { padding: 16, gap: 12 },
   emptyContainer: { flex: 1 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, shadowColor: '#94a3b8', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 2 },

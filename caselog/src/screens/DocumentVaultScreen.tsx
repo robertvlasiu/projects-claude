@@ -3,6 +3,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import React, { useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Chip from '../components/Chip';
+import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FormModal, { Field, inputStyle, textAreaStyle } from '../components/FormModal';
 import FAB from '../components/FAB';
@@ -40,10 +41,11 @@ export default function DocumentVaultScreen({ navigation }: any) {
   }
 
   async function handleSave() {
-    if (!form.title?.trim()) { Alert.alert('Required', 'Please add a title.'); return; }
+    if (!form.title?.trim()) { Alert.alert('Add a title', 'Give this document a title so you can find it later.'); return; }
     setSaving(true);
-    await add({ title: form.title ?? '', category: form.category ?? 'Other', date: form.date ?? '', notes: form.notes ?? '', file_path: form.file_path ?? '', file_name: form.file_name ?? '', mime_type: form.mime_type ?? '' });
+    const id = await add({ title: form.title ?? '', category: form.category ?? 'Other', date: form.date || new Date().toISOString().split('T')[0], notes: form.notes ?? '', file_path: form.file_path ?? '', file_name: form.file_name ?? '', mime_type: form.mime_type ?? '' });
     setSaving(false);
+    if (!id) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
     setModalOpen(false);
     setForm({ date: new Date().toISOString().split('T')[0], category: 'Court Order' });
   }
@@ -51,9 +53,6 @@ export default function DocumentVaultScreen({ navigation }: any) {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Document Vault" />
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={18} color="#64748b" /><Text style={styles.backText}>Legal</Text>
-      </TouchableOpacity>
       <FlatList
         data={records}
         keyExtractor={r => r.id}
@@ -78,7 +77,7 @@ export default function DocumentVaultScreen({ navigation }: any) {
       <FAB onPress={() => setModalOpen(true)} color="#3b82f6" />
       <FormModal visible={modalOpen} title="Add Document" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
         <Field label="Title *"><TextInput style={inputStyle} value={form.title} onChangeText={v => setForm(f => ({ ...f, title: v }))} placeholder="e.g. Temporary Custody Order" /></Field>
-        <Field label="Date"><TextInput style={inputStyle} value={form.date} onChangeText={v => setForm(f => ({ ...f, date: v }))} placeholder="YYYY-MM-DD" /></Field>
+        <Field label="Date"><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} /></Field>
         <Field label="Category">
           <View style={styles.chips}>{CATEGORIES.map(c => <Chip key={c} label={c} selected={form.category === c} onPress={() => setForm(f => ({ ...f, category: c }))} />)}</View>
         </Field>
@@ -96,8 +95,6 @@ export default function DocumentVaultScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10 },
-  backText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
   list: { padding: 16, gap: 12 },
   emptyContainer: { flex: 1 },
   card: { backgroundColor: '#fff', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#94a3b8', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 2 },

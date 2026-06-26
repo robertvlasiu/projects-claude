@@ -1,8 +1,9 @@
-import * as LocalAuthentication from 'expo-local-authentication';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import { getStoredPin } from '../lib/pin';
+import { authenticateBiometric, getBiometricSupport, isBiometricEnabled } from '../lib/security';
 
 type Props = {
   onUnlock: () => void;
@@ -30,26 +31,19 @@ export default function LockScreen({ onUnlock }: Props) {
   ];
 
   const tryBiometrics = useCallback(async () => {
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Unlock Auris',
-      fallbackLabel: 'Use PIN',
-    });
-    if (result.success) onUnlock();
+    // App-handled biometrics only — never falls back to the OS passcode prompt.
+    const ok = await authenticateBiometric('Unlock Auris');
+    if (ok) onUnlock();
   }, [onUnlock]);
 
   useEffect(() => {
     async function setup() {
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      if (!hasHardware) return;
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      if (!enrolled) return;
-      const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+      const enabled = await isBiometricEnabled();
+      if (!enabled) return; // user hasn't activated Face ID / Touch ID for their account
+      const support = await getBiometricSupport();
+      if (!support.available) return;
       setBiometricsAvailable(true);
-      setBiometricType(
-        types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)
-          ? 'face'
-          : 'fingerprint'
-      );
+      setBiometricType(support.type);
       setTimeout(tryBiometrics, 400);
     }
     setup();
@@ -150,6 +144,11 @@ export default function LockScreen({ onUnlock }: Props) {
 
       {biometricsAvailable && (
         <TouchableOpacity style={styles.biometricBtn} onPress={tryBiometrics}>
+          <Ionicons
+            name={biometricType === 'face' ? 'scan-outline' : 'finger-print'}
+            size={18}
+            color="#4f46e5"
+          />
           <Text style={styles.biometricText}>Use {biometricLabel}</Text>
         </TouchableOpacity>
       )}
@@ -188,6 +187,6 @@ const styles = StyleSheet.create({
   keyEmpty: { backgroundColor: 'transparent', shadowOpacity: 0, borderWidth: 0 },
   keyText: { fontSize: 24, fontWeight: '600', color: '#1e1b4b' },
   keyBackspace: { fontSize: 20 },
-  biometricBtn: { marginTop: 28 },
+  biometricBtn: { marginTop: 28, flexDirection: 'row', alignItems: 'center', gap: 8 },
   biometricText: { fontSize: 15, color: '#4f46e5', fontWeight: '600' },
 });

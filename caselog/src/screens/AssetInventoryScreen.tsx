@@ -22,10 +22,11 @@ export default function AssetInventoryScreen({ navigation }: any) {
   const totalDebts = records.filter(r => r.asset_type === 'debt').reduce((s, r) => s + parseFloat(r.estimated_value || '0'), 0);
 
   async function handleSave() {
-    if (!form.name?.trim()) { Alert.alert('Required', 'Name is required.'); return; }
+    if (!form.name?.trim()) { Alert.alert('Add a name', 'Give this asset or debt a name so you can recognise it.'); return; }
     setSaving(true);
-    await add({ name: form.name ?? '', category: form.category ?? 'Other', asset_type: form.asset_type ?? 'asset', estimated_value: form.estimated_value ?? '0', owner: form.owner ?? 'joint', notes: form.notes ?? '' });
+    const id = await add({ name: form.name ?? '', category: form.category ?? 'Other', asset_type: form.asset_type ?? 'asset', estimated_value: form.estimated_value ?? '0', owner: form.owner ?? 'joint', notes: form.notes ?? '' });
     setSaving(false);
+    if (!id) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
     setModalOpen(false);
     setForm({ asset_type: 'asset', owner: 'joint', category: 'Real Estate' });
   }
@@ -33,9 +34,6 @@ export default function AssetInventoryScreen({ navigation }: any) {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Asset & Debt Inventory" />
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={18} color="#64748b" /><Text style={styles.backText}>Finance</Text>
-      </TouchableOpacity>
       <View style={styles.summaryRow}>
         <View style={[styles.summaryCard, { backgroundColor: '#ecfdf5' }]}>
           <Text style={styles.summaryLabel}>Total Assets</Text>
@@ -98,8 +96,6 @@ export default function AssetInventoryScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10 },
-  backText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
   summaryRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 16, paddingBottom: 12 },
   summaryCard: { flex: 1, borderRadius: 14, padding: 14 },
   summaryLabel: { fontSize: 11, color: '#64748b', fontWeight: '600', marginBottom: 4 },

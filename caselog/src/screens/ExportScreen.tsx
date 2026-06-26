@@ -57,10 +57,11 @@ export default function ExportScreen({ navigation }: any) {
   return (
     <View style={styles.root}>
       <ScreenHeader title="Export & Reports" />
-      <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
-        <Ionicons name="arrow-back" size={18} color="#64748b" /><Text style={styles.backText}>More</Text>
-      </TouchableOpacity>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <View style={styles.encNote}>
+          <Ionicons name="lock-closed" size={14} color="#4f46e5" />
+          <Text style={styles.encNoteText}>Your records are decrypted on your device only to build this report.</Text>
+        </View>
         <Text style={styles.sectionTitle}>Select sections to include</Text>
         <View style={styles.grid}>
           {EXPORT_TYPES.map(e => (
@@ -103,9 +104,9 @@ export default function ExportScreen({ navigation }: any) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 20, paddingVertical: 10 },
-  backText: { fontSize: 14, color: '#64748b', fontWeight: '500' },
   content: { padding: 20, gap: 20 },
+  encNote: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#eef2ff', borderRadius: 12, padding: 12 },
+  encNoteText: { flex: 1, fontSize: 12, color: '#4f46e5', lineHeight: 16 },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: '#1e1b4b' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   exportCard: { width: '47%', borderRadius: 16, padding: 14, gap: 8, borderWidth: 2, borderColor: 'transparent' },
