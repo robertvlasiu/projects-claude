@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SubscriptionPlans from './SubscriptionPlans';
 import { useSubscription } from '../hooks/useSubscription';
+import { PRIVACY_POLICY_URL } from '../lib/config';
 import { ENTITLEMENT_DISPLAY_NAME, STORE_TRIAL_DAYS, restorePurchases } from '../lib/subscription';
 
 const FEATURES = [
@@ -96,7 +98,11 @@ function SubscribePaywall({
             <Text style={styles.legal}>
               Payment will be charged to your {storeName} account after the {STORE_TRIAL_DAYS}-day free
               trial. Subscription automatically renews unless cancelled at least 24 hours before the end
-              of the current period. Manage or cancel in {storeName} account settings.
+              of the current period. Manage or cancel in {storeName} account settings. See our{' '}
+              <Text style={styles.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+                Privacy Policy
+              </Text>
+              .
             </Text>
           </>
         ) : (
@@ -143,6 +149,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     paddingHorizontal: 4,
   },
+  legalLink: { color: '#4f46e5', fontWeight: '600' },
   unavailable: {
     fontSize: 14,
     color: '#64748b',

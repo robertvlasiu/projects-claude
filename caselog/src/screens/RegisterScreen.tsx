@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Animated,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   ScrollView,
   StyleSheet,
@@ -15,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { signInWithApple } from '../lib/authProviders';
+import { PRIVACY_POLICY_URL } from '../lib/config';
 import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
 
@@ -166,6 +168,14 @@ export default function RegisterScreen({ navigation }: Props) {
           <TouchableOpacity style={styles.switchLink} onPress={() => navigation.navigate('Login')}>
             <Text style={styles.switchText}>Already have an account? <Text style={styles.switchHighlight}>Sign in</Text></Text>
           </TouchableOpacity>
+
+          <Text style={styles.legalText}>
+            By creating an account, you agree to our{' '}
+            <Text style={styles.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+              Privacy Policy
+            </Text>
+            .
+          </Text>
         </Animated.View>
 
       </ScrollView>
@@ -208,4 +218,7 @@ const styles = StyleSheet.create({
   switchLink: { alignItems: 'center', marginTop: 20 },
   switchText: { fontSize: 14, color: '#94a3b8' },
   switchHighlight: { color: '#4f46e5', fontWeight: '700' },
+
+  legalText: { fontSize: 12, color: '#94a3b8', textAlign: 'center', marginTop: 16, lineHeight: 17 },
+  legalLink: { color: '#4f46e5', fontWeight: '600' },
 });

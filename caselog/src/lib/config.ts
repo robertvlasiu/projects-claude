@@ -1,3 +1,5 @@
+export const PRIVACY_POLICY_URL = 'https://cleverforyou.ro/auris-privacy-policy/';
+
 /** Required EXPO_PUBLIC_* vars — must be set at EAS build time (not read from local .env on device). */
 export type AppConfigStatus = {
   ok: boolean;
