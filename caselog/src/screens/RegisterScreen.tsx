@@ -16,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import { signInWithApple } from '../lib/authProviders';
-import { PRIVACY_POLICY_URL } from '../lib/config';
+import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../lib/config';
 import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
 
@@ -173,6 +173,10 @@ export default function RegisterScreen({ navigation }: Props) {
             By creating an account, you agree to our{' '}
             <Text style={styles.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
               Privacy Policy
+            </Text>
+            {' '}and{' '}
+            <Text style={styles.legalLink} onPress={() => Linking.openURL(TERMS_OF_USE_URL)}>
+              Terms of Use
             </Text>
             .
           </Text>

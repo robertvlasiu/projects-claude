@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SubscriptionPlans from './SubscriptionPlans';
 import { useSubscription } from '../hooks/useSubscription';
-import { PRIVACY_POLICY_URL } from '../lib/config';
+import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../lib/config';
 import { ENTITLEMENT_DISPLAY_NAME, STORE_TRIAL_DAYS, restorePurchases } from '../lib/subscription';
 
 const FEATURES = [
@@ -101,6 +101,10 @@ function SubscribePaywall({
               of the current period. Manage or cancel in {storeName} account settings. See our{' '}
               <Text style={styles.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
                 Privacy Policy
+              </Text>
+              {' '}and{' '}
+              <Text style={styles.legalLink} onPress={() => Linking.openURL(TERMS_OF_USE_URL)}>
+                Terms of Use
               </Text>
               .
             </Text>

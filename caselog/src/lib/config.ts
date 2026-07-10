@@ -1,4 +1,5 @@
 export const PRIVACY_POLICY_URL = 'https://cleverforyou.ro/auris-privacy-policy/';
+export const TERMS_OF_USE_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 /** Required EXPO_PUBLIC_* vars — must be set at EAS build time (not read from local .env on device). */
 export type AppConfigStatus = {
