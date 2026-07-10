@@ -51,6 +51,16 @@ export function revenueCatEnabled(): boolean {
 }
 
 /**
+ * True only in local dev contexts (Expo Go, web) where billing is
+ * intentionally not wired up. A real native build (TestFlight/App Store)
+ * must never be treated as a dev preview, even if its RevenueCat key isn't
+ * a real store key yet — otherwise every install gets a free paywall bypass.
+ */
+export function isDevPreview(): boolean {
+  return Platform.OS === 'web' || isExpoGo();
+}
+
+/**
  * Subscription/billing layer on top of RevenueCat (react-native-purchases + react-native-purchases-ui).
  *
  * Payments go through the platform stores — the Apple payment sheet on iOS and

@@ -13,6 +13,7 @@ import {
   billingAvailable,
   getStatus,
   initBilling,
+  isDevPreview,
   isEntitlementActive,
   onCustomerInfoUpdated,
   revenueCatEnabled,
@@ -88,12 +89,12 @@ export function SubscriptionProvider({
   }, [available, applyCustomerInfo]);
 
   const isPro = !!status?.active;
-  // Bypass paywall only when this build has no billing configured at all
-  // (web, missing key, or Expo Go without a test key). If billing IS
-  // configured but `initBilling` failed at runtime, fail closed — show the
-  // paywall's "unable to load" state instead of granting free access.
+  // Real native builds (TestFlight/App Store) always gate on subscription
+  // status — a missing/test RevenueCat key must show the paywall, not grant
+  // free access. Bypass only applies in local dev previews (Expo Go/web)
+  // where billing is intentionally not configured.
   const billingSupported = revenueCatEnabled();
-  const hasAccess = isPro || !billingSupported;
+  const hasAccess = isPro || (isDevPreview() && !billingSupported);
 
   const value = useMemo<SubscriptionContextValue>(
     () => ({
