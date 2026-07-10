@@ -1,3 +1,4 @@
+import './cryptoPolyfill'; // must come first — crypto-js reads the crypto global at load
 import CryptoJS from 'crypto-js';
 
 const KEY = process.env.EXPO_PUBLIC_ENCRYPTION_KEY ?? 'fallback-dev-key-change-in-prod!!';

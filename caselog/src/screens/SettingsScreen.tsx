@@ -1,36 +1,62 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
-import {
-  authenticateBiometric,
-  getBiometricSupport,
-  isBiometricEnabled,
-  setBiometricEnabled,
-} from '../lib/security';
+import { clearPin } from '../lib/pin';
+import { supabase } from '../lib/supabase';
 
 export default function SettingsScreen({ navigation }: any) {
-  const [bioSupported, setBioSupported] = useState(false);
-  const [bioType, setBioType] = useState<'face' | 'fingerprint' | null>(null);
-  const [bioOn, setBioOn] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    getBiometricSupport().then(s => {
-      setBioSupported(s.available);
-      setBioType(s.type);
-    });
-    isBiometricEnabled().then(setBioOn);
-  }, []);
+  function confirmDeleteAccount() {
+    Alert.alert(
+      'Delete your account?',
+      'This permanently erases your account and every record, file and note in it. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete everything',
+          style: 'destructive',
+          onPress: () => Alert.alert(
+            'Are you absolutely sure?',
+            'All of your case documentation will be gone forever.',
+            [
+              { text: 'Keep my account', style: 'cancel' },
+              { text: 'Yes, delete it all', style: 'destructive', onPress: deleteAccount },
+            ]
+          ),
+        },
+      ]
+    );
+  }
 
-  const bioLabel = bioType === 'face' ? 'Face ID' : 'Touch ID';
-
-  async function toggleBiometric(next: boolean) {
-    if (next) {
-      const ok = await authenticateBiometric(`Enable ${bioLabel} for Auris`);
-      if (!ok) { Alert.alert('Not enabled', `We couldn't verify your ${bioLabel}. Try again.`); return; }
+  async function deleteAccount() {
+    setDeleting(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    const accountId = session?.user?.id;
+    try {
+      if (accountId) {
+        const bucket = supabase.storage.from('attachments');
+        const { data: folders } = await bucket.list(accountId);
+        await Promise.all(
+          (folders ?? []).map(async folder => {
+            const { data: files } = await bucket.list(`${accountId}/${folder.name}`);
+            if (files?.length) await bucket.remove(files.map(f => `${accountId}/${folder.name}/${f.name}`));
+          }),
+        );
+      }
+    } catch {
+      // file cleanup is best-effort; account deletion below is what matters
     }
-    await setBiometricEnabled(next);
-    setBioOn(next);
+    const { error } = await supabase.rpc('delete_user');
+    if (error) {
+      setDeleting(false);
+      Alert.alert('Could not delete account', 'Something went wrong. Check your connection and try again.');
+      return;
+    }
+    if (accountId) await clearPin(accountId);
+    await supabase.auth.signOut();
+    setDeleting(false);
   }
 
   return (
@@ -40,23 +66,6 @@ export default function SettingsScreen({ navigation }: any) {
 
         <Text style={styles.sectionLabel}>Security</Text>
         <View style={styles.card}>
-          <View style={styles.row}>
-            <View style={styles.rowIcon}><Ionicons name={bioType === 'face' ? 'scan' : 'finger-print'} size={20} color="#4f46e5" /></View>
-            <View style={styles.rowBody}>
-              <Text style={styles.rowTitle}>Unlock with {bioLabel}</Text>
-              <Text style={styles.rowSub}>
-                {bioSupported ? `Use ${bioLabel} instead of typing your PIN` : 'No biometrics enrolled on this device'}
-              </Text>
-            </View>
-            <Switch
-              value={bioOn}
-              onValueChange={toggleBiometric}
-              disabled={!bioSupported}
-              trackColor={{ true: '#a5b4fc', false: '#e2e8f0' }}
-              thumbColor={bioOn ? '#4f46e5' : '#f1f5f9'}
-            />
-          </View>
-          <View style={styles.divider} />
           <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('ChangePin')}>
             <View style={styles.rowIcon}><Ionicons name="keypad" size={20} color="#4f46e5" /></View>
             <View style={styles.rowBody}>
@@ -75,13 +84,40 @@ export default function SettingsScreen({ navigation }: any) {
           </View>
           <Text style={styles.encBody}>
             Every incident, message, expense, note and uploaded file is encrypted on your device
-            with AES before it&apos;s stored. Your PIN never leaves your phone, and the system
-            passcode is never used to unlock Auris.
+            with AES before it&apos;s stored. Your PIN never leaves your phone.
           </Text>
           <View style={styles.bullet}><Ionicons name="checkmark-circle" size={15} color="#10b981" /><Text style={styles.bulletText}>Records encrypted before upload</Text></View>
           <View style={styles.bullet}><Ionicons name="checkmark-circle" size={15} color="#10b981" /><Text style={styles.bulletText}>Attachments encrypted, stored privately</Text></View>
-          <View style={styles.bullet}><Ionicons name="checkmark-circle" size={15} color="#10b981" /><Text style={styles.bulletText}>PIN stored in your device&apos;s secure keystore</Text></View>
+          <View style={styles.bullet}><Ionicons name="checkmark-circle" size={15} color="#10b981" /><Text style={styles.bulletText}>PIN stored per account on this device</Text></View>
           <View style={styles.bullet}><Ionicons name="checkmark-circle" size={15} color="#10b981" /><Text style={styles.bulletText}>Only your account can read your data</Text></View>
+        </View>
+
+        <Text style={styles.sectionLabel}>Help</Text>
+        <View style={styles.card}>
+          <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('ContactSupport')}>
+            <View style={[styles.rowIcon, { backgroundColor: '#f0f9ff' }]}>
+              <Ionicons name="mail" size={20} color="#0ea5e9" />
+            </View>
+            <View style={styles.rowBody}>
+              <Text style={styles.rowTitle}>Contact Support</Text>
+              <Text style={styles.rowSub}>Send us a message — we reply to your account email</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionLabel}>Account</Text>
+        <View style={styles.card}>
+          <TouchableOpacity style={styles.row} onPress={confirmDeleteAccount} disabled={deleting}>
+            <View style={[styles.rowIcon, { backgroundColor: '#fef2f2' }]}>
+              {deleting ? <ActivityIndicator size="small" color="#ef4444" /> : <Ionicons name="trash" size={20} color="#ef4444" />}
+            </View>
+            <View style={styles.rowBody}>
+              <Text style={[styles.rowTitle, { color: '#ef4444' }]}>Delete account</Text>
+              <Text style={styles.rowSub}>Permanently erase your account and all case data</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+          </TouchableOpacity>
         </View>
 
       </ScrollView>
@@ -99,7 +135,6 @@ const styles = StyleSheet.create({
   rowBody: { flex: 1 },
   rowTitle: { fontSize: 15, fontWeight: '700', color: '#1e293b' },
   rowSub: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
-  divider: { height: 1, backgroundColor: '#f1f5f9', marginLeft: 66 },
   encHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 14, paddingBottom: 8 },
   encTitle: { fontSize: 15, fontWeight: '700', color: '#1e293b' },
   encBody: { fontSize: 13, color: '#64748b', lineHeight: 19, paddingHorizontal: 14, marginBottom: 10 },

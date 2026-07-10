@@ -43,6 +43,23 @@ function display(value: string | undefined, mode: 'date' | 'time'): string {
 export default function DateField({ value, onChange, mode = 'date', placeholder }: Props) {
   const [open, setOpen] = useState(false);
 
+  // @react-native-community/datetimepicker has no web support — use the
+  // browser's native date/time input there instead.
+  if (Platform.OS === 'web') {
+    const { unstable_createElement } = require('react-native-web');
+    return (
+      <View style={styles.field}>
+        <Ionicons name={mode === 'time' ? 'time-outline' : 'calendar-outline'} size={18} color="#94a3b8" />
+        {unstable_createElement('input', {
+          type: mode,
+          value: value ?? '',
+          onChange: (e: any) => onChange(e.target.value),
+          style: { flex: 1, fontSize: 15, color: '#1e293b', backgroundColor: 'transparent', borderWidth: 0, outlineStyle: 'none', fontFamily: 'inherit' },
+        })}
+      </View>
+    );
+  }
+
   function handleChange(_event: any, selected?: Date) {
     // On Android the picker is a one-shot dialog; close it after a pick/dismiss.
     if (Platform.OS === 'android') setOpen(false);

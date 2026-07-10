@@ -1,0 +1,5 @@
+# Supabase local/dev config — deploy functions with: npx supabase functions deploy contact-support
+project_id = "ujqmhnbqyyhlojxrkedo"
+
+[functions.contact-support]
+verify_jwt = true

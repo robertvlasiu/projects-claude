@@ -1,7 +1,7 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import DashboardScreen from '../screens/DashboardScreen';
 import LogStackScreen from './LogStack';
@@ -28,6 +28,8 @@ const resetToMenu = ({ navigation, route }: any) => ({
 });
 
 export default function TabNavigator() {
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, 10);
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -35,8 +37,8 @@ export default function TabNavigator() {
         tabBarActiveTintColor: '#4f46e5',
         tabBarInactiveTintColor: '#94a3b8',
         tabBarStyle: {
-          height: Platform.OS === 'ios' ? 88 : 64,
-          paddingBottom: Platform.OS === 'ios' ? 28 : 10,
+          height: 54 + bottomPad,
+          paddingBottom: bottomPad,
           paddingTop: 8,
           borderTopColor: '#f1f5f9',
           backgroundColor: '#fff',

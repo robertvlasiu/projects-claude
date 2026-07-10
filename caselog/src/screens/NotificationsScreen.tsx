@@ -6,29 +6,64 @@ import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FAB from '../components/FAB';
 import FormModal, { Field, inputStyle } from '../components/FormModal';
+import RecordActions from '../components/RecordActions';
 import ScreenHeader from '../components/ScreenHeader';
-import { useRecords } from '../hooks/useRecords';
+import { SavedRecord, useRecords } from '../hooks/useRecords';
 import { requestNotificationPermissions, scheduleReminderNotification } from '../lib/notifications';
 import { Reminder } from '../types';
 
 const TYPES = ['Court Date', 'Custody Exchange', 'Filing Deadline', 'Attorney Meeting', 'Payment Due', 'Other'];
 const TYPE_COLORS: Record<string, string> = { 'Court Date': '#ec4899', 'Custody Exchange': '#8b5cf6', 'Filing Deadline': '#ef4444', 'Attorney Meeting': '#10b981', 'Payment Due': '#f97316', Other: '#64748b' };
 
+const emptyForm = (): Partial<Reminder> => ({ type: 'Court Date', completed: false });
+
 export default function NotificationsScreen({ navigation }: any) {
   const { records, loading, add, update, remove } = useRecords<Reminder>('reminder');
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Partial<Reminder>>({ type: 'Court Date', completed: false });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<Reminder>>(emptyForm());
 
   const pending = records.filter(r => !r.completed);
   const done = records.filter(r => r.completed);
 
+  function openNew() {
+    setEditingId(null);
+    setForm(emptyForm());
+    setModalOpen(true);
+  }
+
+  function openEdit(item: SavedRecord<Reminder>) {
+    const { id, created_at, ...rest } = item;
+    setEditingId(id);
+    setForm(rest);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setForm(emptyForm());
+  }
+
   async function handleSave() {
     if (!form.title?.trim() || !form.date?.trim()) { Alert.alert('Add a title and date', 'A reminder needs a title and a date.'); return; }
     setSaving(true);
-    const id = await add({ title: form.title ?? '', date: form.date ?? '', time: form.time ?? '', type: form.type ?? 'Other', completed: false });
+    const payload = {
+      title: form.title ?? '',
+      date: form.date ?? '',
+      time: form.time ?? '',
+      type: form.type ?? 'Other',
+      completed: form.completed ?? false,
+    };
+    if (editingId) {
+      await update(editingId, payload);
+      setSaving(false);
+      closeModal();
+      return;
+    }
+    const id = await add({ ...payload, completed: false });
     if (!id) { setSaving(false); Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
-    // Schedule device notification
     const granted = await requestNotificationPermissions();
     if (granted) {
       await scheduleReminderNotification(
@@ -38,11 +73,10 @@ export default function NotificationsScreen({ navigation }: any) {
       );
     }
     setSaving(false);
-    setModalOpen(false);
-    setForm({ type: 'Court Date', completed: false });
+    closeModal();
   }
 
-  function ReminderCard({ item }: { item: Reminder & { id: string } }) {
+  function ReminderCard({ item }: { item: SavedRecord<Reminder> }) {
     return (
       <View style={[styles.card, item.completed && styles.cardDone]}>
         <TouchableOpacity onPress={() => update(item.id, { completed: !item.completed })} style={[styles.check, item.completed && styles.checkDone]}>
@@ -55,9 +89,7 @@ export default function NotificationsScreen({ navigation }: any) {
             <Text style={[styles.badgeText, { color: TYPE_COLORS[item.type] ?? '#64748b' }]}>{item.type}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={() => Alert.alert('Delete?', '', [{ text: 'Cancel' }, { text: 'Delete', style: 'destructive', onPress: () => remove(item.id) }])}>
-          <Ionicons name="trash-outline" size={15} color="#cbd5e1" />
-        </TouchableOpacity>
+        <RecordActions onEdit={() => openEdit(item)} onDelete={() => remove(item.id)} iconSize={15} />
       </View>
     );
   }
@@ -67,7 +99,7 @@ export default function NotificationsScreen({ navigation }: any) {
       <ScreenHeader title="Reminders" />
       {records.length === 0 && !loading ? (
         <View style={styles.emptyContainer}>
-          <EmptyState icon="notifications-outline" title="No reminders yet" subtitle="Set alerts for court dates, custody exchanges, and deadlines." />
+          <EmptyState icon="notifications-outline" title="No reminders yet" subtitle="Set alerts for court dates, custody exchanges, and deadlines. Your phone will notify you at the right time." actionLabel="Set a reminder" onAction={openNew} />
         </View>
       ) : (
         <FlatList
@@ -85,9 +117,9 @@ export default function NotificationsScreen({ navigation }: any) {
           )}
         />
       )}
-      <FAB onPress={() => setModalOpen(true)} color="#a855f7" />
+      <FAB onPress={openNew} color="#a855f7" />
 
-      <FormModal visible={modalOpen} title="New Reminder" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
+      <FormModal visible={modalOpen} title={editingId ? 'Edit Reminder' : 'New Reminder'} onClose={closeModal} onSave={handleSave} saving={saving}>
         <Field label="Title *"><TextInput style={inputStyle} value={form.title} onChangeText={v => setForm(f => ({ ...f, title: v }))} placeholder="e.g. Custody hearing at 9am" /></Field>
         <Field label="Date *"><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} /></Field>
         <Field label="Time"><DateField mode="time" value={form.time} onChange={v => setForm(f => ({ ...f, time: v }))} /></Field>

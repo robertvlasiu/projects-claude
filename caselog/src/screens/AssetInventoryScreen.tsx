@@ -5,30 +5,66 @@ import Chip from '../components/Chip';
 import EmptyState from '../components/EmptyState';
 import FormModal, { Field, inputStyle, textAreaStyle } from '../components/FormModal';
 import FAB from '../components/FAB';
+import RecordActions from '../components/RecordActions';
 import ScreenHeader from '../components/ScreenHeader';
-import { useRecords } from '../hooks/useRecords';
+import { SavedRecord, useRecords } from '../hooks/useRecords';
 import { Asset, AssetOwner, AssetType } from '../types';
 
 const CATEGORIES = ['Real Estate', 'Vehicle', 'Bank Account', 'Retirement', 'Business', 'Personal Property', 'Debt', 'Other'];
 const OWNER_COLORS: Record<AssetOwner, string> = { joint: '#4f46e5', mine: '#10b981', theirs: '#ef4444' };
 
+const emptyForm = (): Partial<Asset> => ({ asset_type: 'asset', owner: 'joint', category: 'Real Estate' });
+
 export default function AssetInventoryScreen({ navigation }: any) {
-  const { records, loading, add, remove } = useRecords<Asset>('asset');
+  const { records, loading, add, update, remove } = useRecords<Asset>('asset');
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Partial<Asset>>({ asset_type: 'asset', owner: 'joint', category: 'Real Estate' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<Asset>>(emptyForm());
 
   const totalAssets = records.filter(r => r.asset_type === 'asset').reduce((s, r) => s + parseFloat(r.estimated_value || '0'), 0);
   const totalDebts = records.filter(r => r.asset_type === 'debt').reduce((s, r) => s + parseFloat(r.estimated_value || '0'), 0);
 
+  function openNew() {
+    setEditingId(null);
+    setForm(emptyForm());
+    setModalOpen(true);
+  }
+
+  function openEdit(item: SavedRecord<Asset>) {
+    const { id, created_at, ...rest } = item;
+    setEditingId(id);
+    setForm(rest);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setForm(emptyForm());
+  }
+
   async function handleSave() {
     if (!form.name?.trim()) { Alert.alert('Add a name', 'Give this asset or debt a name so you can recognise it.'); return; }
     setSaving(true);
-    const id = await add({ name: form.name ?? '', category: form.category ?? 'Other', asset_type: form.asset_type ?? 'asset', estimated_value: form.estimated_value ?? '0', owner: form.owner ?? 'joint', notes: form.notes ?? '' });
+    const payload = {
+      name: form.name ?? '',
+      category: form.category ?? 'Other',
+      asset_type: form.asset_type ?? 'asset',
+      estimated_value: form.estimated_value ?? '0',
+      owner: form.owner ?? 'joint',
+      notes: form.notes ?? '',
+    };
+    if (editingId) {
+      await update(editingId, payload);
+      setSaving(false);
+      closeModal();
+      return;
+    }
+    const id = await add(payload);
     setSaving(false);
     if (!id) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
-    setModalOpen(false);
-    setForm({ asset_type: 'asset', owner: 'joint', category: 'Real Estate' });
+    closeModal();
   }
 
   return (
@@ -48,7 +84,7 @@ export default function AssetInventoryScreen({ navigation }: any) {
         data={records}
         keyExtractor={r => r.id}
         contentContainerStyle={records.length === 0 ? styles.emptyContainer : styles.list}
-        ListEmptyComponent={!loading ? <EmptyState icon="home-outline" title="No assets or debts logged" subtitle="Catalog everything that will be divided in the settlement." /> : null}
+        ListEmptyComponent={!loading ? <EmptyState icon="home-outline" title="No assets or debts logged" subtitle="Catalog everything that will be divided in the settlement." actionLabel="Add an asset or debt" onAction={openNew} /> : null}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={[styles.typeBadge, { backgroundColor: item.asset_type === 'asset' ? '#ecfdf5' : '#fef2f2' }]}>
@@ -63,15 +99,13 @@ export default function AssetInventoryScreen({ navigation }: any) {
               <View style={[styles.ownerBadge, { backgroundColor: OWNER_COLORS[item.owner] + '20' }]}>
                 <Text style={[styles.ownerText, { color: OWNER_COLORS[item.owner] }]}>{item.owner}</Text>
               </View>
-              <TouchableOpacity onPress={() => Alert.alert('Delete?', '', [{ text: 'Cancel' }, { text: 'Delete', style: 'destructive', onPress: () => remove(item.id) }])}>
-                <Ionicons name="trash-outline" size={14} color="#cbd5e1" />
-              </TouchableOpacity>
+              <RecordActions onEdit={() => openEdit(item)} onDelete={() => remove(item.id)} iconSize={14} />
             </View>
           </View>
         )}
       />
-      <FAB onPress={() => setModalOpen(true)} color="#14b8a6" />
-      <FormModal visible={modalOpen} title="Add Asset / Debt" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
+      <FAB onPress={openNew} color="#14b8a6" />
+      <FormModal visible={modalOpen} title={editingId ? 'Edit Asset / Debt' : 'Add Asset / Debt'} onClose={closeModal} onSave={handleSave} saving={saving}>
         <Field label="Type">
           <View style={styles.chips}>
             <Chip label="Asset" selected={form.asset_type === 'asset'} onPress={() => setForm(f => ({ ...f, asset_type: 'asset' }))} color="#10b981" />

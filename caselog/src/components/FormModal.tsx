@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
+  Alert,
+  Dimensions,
+  Keyboard,
   Modal,
   Platform,
   ScrollView,
@@ -12,23 +14,54 @@ import {
   View,
 } from 'react-native';
 
+// KeyboardAvoidingView measures itself against the full screen, which is wrong
+// inside a pageSheet modal — the Save button ends up half-hidden behind the
+// keyboard. Track the real keyboard frame instead and pad the sheet by the
+// exact overlap. iOS only: Android's adjustResize already resizes the window.
+function useKeyboardOverlap(): number {
+  const [overlap, setOverlap] = useState(0);
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    const show = Keyboard.addListener('keyboardWillChangeFrame', e => {
+      const windowHeight = Dimensions.get('window').height;
+      setOverlap(Math.max(0, windowHeight - e.endCoordinates.screenY));
+    });
+    const hide = Keyboard.addListener('keyboardWillHide', () => setOverlap(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+  return overlap;
+}
+
 type Props = {
   visible: boolean;
   title: string;
   onClose: () => void;
   onSave: () => void;
   saving?: boolean;
+  uploading?: boolean;
   saveLabel?: string;
   children: React.ReactNode;
 };
 
-export default function FormModal({ visible, title, onClose, onSave, saving, saveLabel = 'Save', children }: Props) {
+export default function FormModal({ visible, title, onClose, onSave, saving, uploading, saveLabel = 'Save', children }: Props) {
+  const keyboardOverlap = useKeyboardOverlap();
+  const keyboardOpen = keyboardOverlap > 0;
+  const saveBlocked = saving || uploading;
+
+  function handleClose() {
+    if (uploading) {
+      Alert.alert('Upload in progress', 'Wait for the attachment to finish uploading before closing.');
+      return;
+    }
+    onClose();
+  }
+
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={handleClose}>
+      <View style={[styles.root, keyboardOpen && { paddingBottom: keyboardOverlap }]}>
         <View style={styles.handle} />
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.cancelBtn} hitSlop={8}>
+          <TouchableOpacity onPress={handleClose} style={styles.cancelBtn} hitSlop={8}>
             <Ionicons name="close" size={22} color="#64748b" />
           </TouchableOpacity>
           <Text style={styles.title}>{title}</Text>
@@ -37,26 +70,36 @@ export default function FormModal({ visible, title, onClose, onSave, saving, sav
         <ScrollView style={styles.body} contentContainerStyle={styles.bodyContent} keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
-        {/* Primary action sits at the bottom — within easy thumb reach, mirroring the + button. */}
-        <View style={styles.footer}>
-          <View style={styles.encRow}>
-            <Ionicons name="lock-closed" size={12} color="#94a3b8" />
-            <Text style={styles.encText}>Encrypted on your device before it&apos;s saved</Text>
-          </View>
+        {/* Primary action sits at the bottom — within easy thumb reach, mirroring the + button.
+            While the keyboard is up, drop the home-indicator padding and the info row so the
+            button stays compact and fully visible above the keyboard. */}
+        <View style={[styles.footer, keyboardOpen && styles.footerCompact]}>
+          {!keyboardOpen && (
+            <View style={styles.encRow}>
+              <Ionicons name="lock-closed" size={12} color="#94a3b8" />
+              <Text style={styles.encText}>
+                {uploading
+                  ? 'Encrypting & uploading attachment — save is disabled until finished'
+                  : "Encrypted on your device before it's saved"}
+              </Text>
+            </View>
+          )}
           <TouchableOpacity
-            onPress={onSave}
-            style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
-            disabled={saving}
-            activeOpacity={0.85}
+            onPress={() => { if (!saveBlocked) onSave(); }}
+            style={[styles.saveBtn, saveBlocked && styles.saveBtnDisabled]}
+            disabled={saveBlocked}
+            activeOpacity={saveBlocked ? 1 : 0.85}
           >
             {saving ? (
               <ActivityIndicator color="#fff" size="small" />
+            ) : uploading ? (
+              <Text style={styles.saveText}>Uploading…</Text>
             ) : (
               <Text style={styles.saveText}>{saveLabel}</Text>
             )}
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -105,6 +148,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 28 : 16,
     borderTopWidth: 1, borderTopColor: '#f1f5f9', backgroundColor: '#fff', gap: 10,
   },
+  footerCompact: { paddingTop: 10, paddingBottom: 10 },
   encRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   encText: { fontSize: 11, color: '#94a3b8' },
   saveBtn: {

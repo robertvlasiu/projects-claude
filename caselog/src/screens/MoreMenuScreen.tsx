@@ -9,7 +9,9 @@ const ITEMS: MenuItem[] = [
   { label: 'Contacts', description: 'Attorney, mediator, judge, therapist, school', icon: 'person-add', color: '#14b8a6', bg: '#f0fdfa', screen: 'Contacts' },
   { label: 'Export & Reports', description: 'Generate PDF summaries for your attorney', icon: 'share-social', color: '#6366f1', bg: '#eef2ff', screen: 'Export' },
   { label: 'Reminders', description: 'Push alerts for court dates and custody exchanges', icon: 'notifications', color: '#f97316', bg: '#fff7ed', screen: 'Notifications' },
-  { label: 'Settings & Security', description: 'Face ID, PIN, and how your data is encrypted', icon: 'shield-checkmark', color: '#10b981', bg: '#ecfdf5', screen: 'Settings' },
+  { label: 'Subscription', description: 'Manage your Auris Pro plan', icon: 'card', color: '#4f46e5', bg: '#eef2ff', screen: 'Subscription' },
+  { label: 'Contact Support', description: 'Get help from the Auris team', icon: 'mail', color: '#0ea5e9', bg: '#f0f9ff', screen: 'ContactSupport' },
+  { label: 'Settings & Security', description: 'PIN and how your data is encrypted', icon: 'shield-checkmark', color: '#10b981', bg: '#ecfdf5', screen: 'Settings' },
 ];
 
 export default function MoreMenuScreen({ navigation }: any) {

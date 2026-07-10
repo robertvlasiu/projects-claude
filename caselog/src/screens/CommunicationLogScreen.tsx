@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TextInput, View } from 'react-native';
+import AttachmentList from '../components/AttachmentList';
 import AttachmentPicker from '../components/AttachmentPicker';
 import Chip from '../components/Chip';
 import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FAB from '../components/FAB';
 import FormModal, { Field, inputStyle, textAreaStyle } from '../components/FormModal';
+import RecordActions from '../components/RecordActions';
 import ScreenHeader from '../components/ScreenHeader';
-import { useRecords } from '../hooks/useRecords';
+import { SavedRecord, useRecords } from '../hooks/useRecords';
 import { CommMethod, Communication, Tone } from '../types';
 
 const METHODS: { value: CommMethod; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -28,20 +30,65 @@ const TONES: { value: Tone; label: string; color: string }[] = [
 const TONE_COLORS: Record<Tone, string> = { cooperative: '#10b981', neutral: '#64748b', tense: '#f59e0b', hostile: '#ef4444' };
 const METHOD_ICONS: Record<CommMethod, keyof typeof Ionicons.glyphMap> = { call: 'call', text: 'chatbubble', email: 'mail', in_person: 'person' };
 
+const emptyForm = (): Partial<Communication> => ({
+  date: new Date().toISOString().split('T')[0],
+  method: 'call',
+  tone: 'neutral',
+  attachment_paths: [],
+});
+
 export default function CommunicationLogScreen({ navigation }: any) {
-  const { records, loading, add, remove } = useRecords<Communication>('communication');
+  const { records, loading, add, update, remove } = useRecords<Communication>('communication');
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Partial<Communication>>({ date: new Date().toISOString().split('T')[0], method: 'call', tone: 'neutral', attachment_paths: [] });
+  const [uploading, setUploading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<Communication>>(emptyForm());
+
+  function openNew() {
+    setEditingId(null);
+    setForm(emptyForm());
+    setModalOpen(true);
+  }
+
+  function openEdit(item: SavedRecord<Communication>) {
+    const { id, created_at, ...rest } = item;
+    setEditingId(id);
+    setForm({ ...rest, attachment_paths: rest.attachment_paths ?? [] });
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setForm(emptyForm());
+    setUploading(false);
+  }
 
   async function handleSave() {
+    if (uploading) return;
     if (!form.summary?.trim()) { Alert.alert('Add a summary', 'Note what was said or agreed so this log is useful later.'); return; }
     setSaving(true);
-    const id = await add({ date: form.date || new Date().toISOString().split('T')[0], time: new Date().toTimeString().slice(0, 5), method: form.method ?? 'call', party: form.party ?? '', summary: form.summary ?? '', tone: form.tone ?? 'neutral', duration: form.duration ?? '', attachment_paths: form.attachment_paths ?? [] });
+    const payload = {
+      date: form.date || new Date().toISOString().split('T')[0],
+      time: form.time || new Date().toTimeString().slice(0, 5),
+      method: form.method ?? 'call',
+      party: form.party ?? '',
+      summary: form.summary ?? '',
+      tone: form.tone ?? 'neutral',
+      duration: form.duration ?? '',
+      attachment_paths: form.attachment_paths ?? [],
+    };
+    if (editingId) {
+      await update(editingId, payload);
+      setSaving(false);
+      closeModal();
+      return;
+    }
+    const id = await add(payload);
     setSaving(false);
     if (!id) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
-    setModalOpen(false);
-    setForm({ date: new Date().toISOString().split('T')[0], method: 'call', tone: 'neutral', attachment_paths: [] });
+    closeModal();
   }
 
   return (
@@ -51,7 +98,7 @@ export default function CommunicationLogScreen({ navigation }: any) {
         data={records}
         keyExtractor={r => r.id}
         contentContainerStyle={[records.length === 0 ? styles.emptyContainer : styles.list, { paddingBottom: 100 }]}
-        ListEmptyComponent={!loading ? <EmptyState icon="chatbubbles-outline" title="No communications yet" subtitle="Log every call, text, and email with the other party." /> : null}
+        ListEmptyComponent={!loading ? <EmptyState icon="chatbubbles-outline" title="No communications yet" subtitle="Log every call, text, and email with the other party." actionLabel="Log a communication" onAction={openNew} /> : null}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={[styles.toneBar, { backgroundColor: TONE_COLORS[item.tone] }]} />
@@ -60,26 +107,26 @@ export default function CommunicationLogScreen({ navigation }: any) {
                 <Ionicons name={METHOD_ICONS[item.method]} size={14} color="#94a3b8" />
                 <Text style={styles.cardDate}>{item.date} · {item.time}</Text>
                 <View style={{ flex: 1 }} />
-                <TouchableOpacity onPress={() => Alert.alert('Delete?', '', [{ text: 'Cancel' }, { text: 'Delete', style: 'destructive', onPress: () => remove(item.id) }])}>
-                  <Ionicons name="trash-outline" size={15} color="#cbd5e1" />
-                </TouchableOpacity>
+                <RecordActions onEdit={() => openEdit(item)} onDelete={() => remove(item.id)} />
               </View>
               <Text style={styles.party}>{item.party}</Text>
-              <Text style={styles.summary} numberOfLines={2}>{item.summary}</Text>
+              <Text style={styles.summary}>{item.summary}</Text>
               <View style={styles.cardMeta}>
                 <View style={[styles.badge, { backgroundColor: TONE_COLORS[item.tone] + '20' }]}>
                   <Text style={[styles.badgeText, { color: TONE_COLORS[item.tone] }]}>{item.tone.toUpperCase()}</Text>
                 </View>
                 {item.duration ? <Text style={styles.metaText}>⏱ {item.duration} min</Text> : null}
-                {(item.attachment_paths?.length ?? 0) > 0 && <Text style={styles.metaText}>📎 {item.attachment_paths!.length}</Text>}
               </View>
+              {(item.attachment_paths?.length ?? 0) > 0 && (
+                <AttachmentList paths={item.attachment_paths!} />
+              )}
             </View>
           </View>
         )}
       />
-      <FAB onPress={() => setModalOpen(true)} color="#8b5cf6" />
+      <FAB onPress={openNew} color="#8b5cf6" />
 
-      <FormModal visible={modalOpen} title="Log Communication" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
+      <FormModal visible={modalOpen} title={editingId ? 'Edit Communication' : 'Log Communication'} onClose={closeModal} onSave={handleSave} saving={saving} uploading={uploading}>
         <Field label="Date"><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} /></Field>
         <Field label="Method">
           <View style={styles.chips}>{METHODS.map(m => <Chip key={m.value} label={m.label} selected={form.method === m.value} onPress={() => setForm(f => ({ ...f, method: m.value }))} />)}</View>
@@ -91,7 +138,7 @@ export default function CommunicationLogScreen({ navigation }: any) {
         </Field>
         <Field label="Duration (minutes)"><TextInput style={inputStyle} value={form.duration} onChangeText={v => setForm(f => ({ ...f, duration: v }))} placeholder="15" keyboardType="number-pad" /></Field>
         <Field label="Screenshots / Files">
-          <AttachmentPicker paths={form.attachment_paths ?? []} onChange={paths => setForm(f => ({ ...f, attachment_paths: paths }))} />
+          <AttachmentPicker paths={form.attachment_paths ?? []} onChange={paths => setForm(f => ({ ...f, attachment_paths: paths }))} recordId={editingId ?? 'temp'} onUploadingChange={setUploading} />
         </Field>
       </FormModal>
     </View>

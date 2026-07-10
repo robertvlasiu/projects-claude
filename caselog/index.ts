@@ -1,3 +1,4 @@
+import './src/lib/cryptoPolyfill'; // install crypto.getRandomValues before anything else loads
 import { registerRootComponent } from 'expo';
 
 import App from './App';

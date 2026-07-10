@@ -68,3 +68,24 @@ CREATE POLICY "users_delete_own_files" ON storage.objects
     bucket_id = 'attachments' AND
     auth.uid()::text = (storage.foldername(name))[1]
   );
+
+-- Self-service account deletion (required by App Store review for apps with
+-- sign-up). Deletes the caller's auth user; records cascade via FK.
+-- Attachment files are removed by the app via the Storage API before this
+-- call — Supabase blocks direct SQL deletes on storage tables.
+create or replace function public.delete_user()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+revoke all on function public.delete_user() from public;
+revoke all on function public.delete_user() from anon;
+grant execute on function public.delete_user() to authenticated;

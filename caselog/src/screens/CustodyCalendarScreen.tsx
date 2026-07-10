@@ -2,14 +2,16 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useMemo, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Calendar } from 'react-native-calendars';
+import AttachmentList from '../components/AttachmentList';
 import AttachmentPicker from '../components/AttachmentPicker';
 import Chip from '../components/Chip';
 import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FAB from '../components/FAB';
 import FormModal, { Field, inputStyle, textAreaStyle } from '../components/FormModal';
+import RecordActions from '../components/RecordActions';
 import ScreenHeader from '../components/ScreenHeader';
-import { useRecords } from '../hooks/useRecords';
+import { SavedRecord, useRecords } from '../hooks/useRecords';
 import { CustodyPattern, generateCustodyDates, WEEKDAY_LABELS } from '../lib/custodyPatterns';
 import { requestNotificationPermissions, scheduleEventNotification } from '../lib/notifications';
 import { CustodyEvent } from '../types';
@@ -21,12 +23,22 @@ type RepeatKind = 'weekdays' | 'nth_weekends' | 'alternating_weekends';
 const ORDINALS = [{ v: 1, label: '1st' }, { v: 2, label: '2nd' }, { v: 3, label: '3rd' }, { v: 4, label: '4th' }, { v: 5, label: 'Last' }];
 const MONTH_OPTIONS = [1, 3, 6, 12];
 
+const emptyForm = (date = ''): Partial<CustodyEvent> => ({
+  date: date || new Date().toISOString().split('T')[0],
+  with_parent: 'me',
+  type: 'Scheduled',
+  status: 'scheduled',
+  attachment_paths: [],
+});
+
 export default function CustodyCalendarScreen({ navigation }: any) {
-  const { records, loading, add, addMany, remove } = useRecords<CustodyEvent>('custody_event');
+  const { records, loading, add, addMany, update, remove } = useRecords<CustodyEvent>('custody_event');
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState('');
-  const [form, setForm] = useState<Partial<CustodyEvent>>({ with_parent: 'me', type: 'Scheduled', status: 'scheduled', attachment_paths: [] });
+  const [form, setForm] = useState<Partial<CustodyEvent>>(emptyForm());
 
   // ── Recurring schedule builder ──────────────────────────────────
   const [repeatOpen, setRepeatOpen] = useState(false);
@@ -89,10 +101,46 @@ export default function CustodyCalendarScreen({ navigation }: any) {
 
   const dayRecords = selectedDate ? records.filter(r => r.date === selectedDate) : records;
 
+  function openNew() {
+    setEditingId(null);
+    setForm(emptyForm(selectedDate));
+    setModalOpen(true);
+  }
+
+  function openEdit(item: SavedRecord<CustodyEvent>) {
+    const { id, created_at, ...rest } = item;
+    setEditingId(id);
+    setForm({ ...rest, attachment_paths: rest.attachment_paths ?? [] });
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setForm(emptyForm(selectedDate));
+    setUploading(false);
+  }
+
   async function handleSave() {
+    if (uploading) return;
     if (!form.date?.trim()) { Alert.alert('Pick a date', 'Choose the day this custody event happens.'); return; }
     setSaving(true);
-    const id = await add({ date: form.date ?? '', type: form.type ?? 'Scheduled', notes: form.notes ?? '', with_parent: form.with_parent ?? 'me', child_names: form.child_names ?? '', status: form.status ?? 'scheduled', attachment_paths: form.attachment_paths ?? [] });
+    const payload = {
+      date: form.date ?? '',
+      type: form.type ?? 'Scheduled',
+      notes: form.notes ?? '',
+      with_parent: form.with_parent ?? 'me',
+      child_names: form.child_names ?? '',
+      status: form.status ?? 'scheduled',
+      attachment_paths: form.attachment_paths ?? [],
+    };
+    if (editingId) {
+      await update(editingId, payload);
+      setSaving(false);
+      closeModal();
+      return;
+    }
+    const id = await add(payload);
     if (!id) { setSaving(false); Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
     if (form.type !== 'Violation') {
       const granted = await requestNotificationPermissions();
@@ -105,8 +153,7 @@ export default function CustodyCalendarScreen({ navigation }: any) {
       }
     }
     setSaving(false);
-    setModalOpen(false);
-    setForm({ with_parent: 'me', type: 'Scheduled', status: 'scheduled', attachment_paths: [] });
+    closeModal();
   }
 
   return (
@@ -138,7 +185,7 @@ export default function CustodyCalendarScreen({ navigation }: any) {
         data={dayRecords}
         keyExtractor={r => r.id}
         contentContainerStyle={[dayRecords.length === 0 ? styles.emptyContainer : styles.list, { paddingBottom: 100 }]}
-        ListEmptyComponent={!loading ? <EmptyState icon="people-outline" title={selectedDate ? 'No events on this day' : 'No custody events yet'} subtitle="Track custody days, handoffs, and any schedule violations." /> : null}
+        ListEmptyComponent={!loading ? <EmptyState icon="people-outline" title={selectedDate ? 'No events on this day' : 'No custody events yet'} subtitle="Track custody days, handoffs, and any schedule violations." actionLabel="Add a custody event" onAction={openNew} /> : null}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={[styles.typeBar, { backgroundColor: TYPE_COLORS[item.type] ?? '#64748b' }]} />
@@ -149,20 +196,20 @@ export default function CustodyCalendarScreen({ navigation }: any) {
                   <Text style={[styles.badgeText, { color: item.with_parent === 'me' ? '#10b981' : '#ef4444' }]}>{item.with_parent === 'me' ? 'With Me' : 'With Other'}</Text>
                 </View>
                 <View style={{ flex: 1 }} />
-                <TouchableOpacity onPress={() => Alert.alert('Delete?', '', [{ text: 'Cancel' }, { text: 'Delete', style: 'destructive', onPress: () => remove(item.id) }])}>
-                  <Ionicons name="trash-outline" size={14} color="#cbd5e1" />
-                </TouchableOpacity>
+                <RecordActions onEdit={() => openEdit(item)} onDelete={() => remove(item.id)} iconSize={14} />
               </View>
               <Text style={styles.type}>{item.type}{item.child_names ? ` — ${item.child_names}` : ''}</Text>
               {item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}
-              {(item.attachment_paths?.length ?? 0) > 0 && <Text style={styles.attachBadge}>📎 {item.attachment_paths!.length} file(s)</Text>}
+              {(item.attachment_paths?.length ?? 0) > 0 && (
+                <AttachmentList paths={item.attachment_paths!} />
+              )}
             </View>
           </View>
         )}
       />
-      <FAB onPress={() => { setForm(f => ({ ...f, date: selectedDate || new Date().toISOString().split('T')[0] })); setModalOpen(true); }} color="#10b981" />
+      <FAB onPress={openNew} color="#10b981" />
 
-      <FormModal visible={modalOpen} title="Add Custody Event" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
+      <FormModal visible={modalOpen} title={editingId ? 'Edit Custody Event' : 'Add Custody Event'} onClose={closeModal} onSave={handleSave} saving={saving} uploading={uploading}>
         <Field label="Date"><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} /></Field>
         <Field label="Type">
           <View style={styles.chips}>{EVENT_TYPES.map(t => <Chip key={t} label={t} selected={form.type === t} onPress={() => setForm(f => ({ ...f, type: t }))} color={TYPE_COLORS[t]} />)}</View>
@@ -176,7 +223,7 @@ export default function CustodyCalendarScreen({ navigation }: any) {
         <Field label="Child(ren)"><TextInput style={inputStyle} value={form.child_names} onChangeText={v => setForm(f => ({ ...f, child_names: v }))} placeholder="Child names" /></Field>
         <Field label="Notes"><TextInput style={textAreaStyle} value={form.notes} onChangeText={v => setForm(f => ({ ...f, notes: v }))} placeholder="Details, violations, issues..." multiline /></Field>
         <Field label="Attachments">
-          <AttachmentPicker paths={form.attachment_paths ?? []} onChange={paths => setForm(f => ({ ...f, attachment_paths: paths }))} />
+          <AttachmentPicker paths={form.attachment_paths ?? []} onChange={paths => setForm(f => ({ ...f, attachment_paths: paths }))} recordId={editingId ?? 'temp'} onUploadingChange={setUploading} />
         </Field>
       </FormModal>
 
@@ -298,6 +345,5 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '700' },
   type: { fontSize: 14, fontWeight: '700', color: '#1e293b' },
   notes: { fontSize: 13, color: '#64748b' },
-  attachBadge: { fontSize: 12, color: '#94a3b8' },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

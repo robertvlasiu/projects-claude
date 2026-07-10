@@ -11,16 +11,32 @@ Notifications.setNotificationHandler({
   }),
 });
 
-export async function requestNotificationPermissions(): Promise<boolean> {
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('default', {
-      name: 'Auris Alerts',
-      importance: Notifications.AndroidImportance.HIGH,
-      vibrationPattern: [0, 250, 250, 250],
-    });
+/** Check permission without prompting. Returns null where notifications aren't supported (web). */
+export async function getNotificationPermissionStatus(): Promise<boolean | null> {
+  if (Platform.OS === 'web') return null;
+  try {
+    const { status } = await Notifications.getPermissionsAsync();
+    return status === 'granted';
+  } catch {
+    return null;
   }
-  const { status } = await Notifications.requestPermissionsAsync();
-  return status === 'granted';
+}
+
+export async function requestNotificationPermissions(): Promise<boolean> {
+  // Never throws — a permission failure must not break the save flow calling it.
+  try {
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('default', {
+        name: 'Auris Alerts',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 250, 250],
+      });
+    }
+    const { status } = await Notifications.requestPermissionsAsync();
+    return status === 'granted';
+  } catch {
+    return false;
+  }
 }
 
 export async function scheduleEventNotification(

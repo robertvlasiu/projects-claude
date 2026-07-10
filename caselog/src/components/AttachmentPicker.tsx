@@ -1,24 +1,32 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { attachmentPath, uploadEncryptedFile } from '../lib/storage';
-import { supabase } from '../lib/supabase';
+import { getUserId } from '../lib/supabase';
 
 type Props = {
   paths: string[];
   onChange: (paths: string[]) => void;
   recordId?: string;
+  onUploadingChange?: (uploading: boolean) => void;
 };
 
-export default function AttachmentPicker({ paths, onChange, recordId = 'temp' }: Props) {
+export default function AttachmentPicker({ paths, onChange, recordId = 'temp', onUploadingChange }: Props) {
   const [busy, setBusy] = useState(false);
+  const pathsRef = useRef(paths);
+  pathsRef.current = paths;
+
+  function setUploading(next: boolean) {
+    setBusy(next);
+    onUploadingChange?.(next);
+  }
 
   async function pickImage() {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) { Alert.alert('Permission needed', 'Allow photo access to attach images.'); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.6 });
     if (result.canceled) return;
     await upload(result.assets[0].uri, result.assets[0].fileName ?? result.assets[0].uri.split('/').pop() ?? 'image.jpg');
   }
@@ -31,14 +39,23 @@ export default function AttachmentPicker({ paths, onChange, recordId = 'temp' }:
   }
 
   async function upload(uri: string, name: string) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { Alert.alert('Not signed in', 'Please sign in again to attach files.'); return; }
-    setBusy(true);
-    const path = attachmentPath(user.id, recordId, name);
-    const { error } = await uploadEncryptedFile(uri, path);
-    setBusy(false);
-    if (error) { Alert.alert('Upload failed', error.message || 'Could not upload the file. Try again.'); return; }
-    onChange([...paths, path]);
+    setUploading(true);
+    try {
+      const userId = await getUserId();
+      if (!userId) {
+        Alert.alert('Not signed in', 'Please sign in again to attach files.');
+        return;
+      }
+      const path = attachmentPath(userId, recordId, name);
+      const { error } = await uploadEncryptedFile(uri, path);
+      if (error) {
+        Alert.alert('Upload failed', error.message || 'Could not upload the file. Try again.');
+        return;
+      }
+      onChange([...pathsRef.current, path]);
+    } finally {
+      setUploading(false);
+    }
   }
 
   function remove(path: string) {
@@ -67,8 +84,8 @@ export default function AttachmentPicker({ paths, onChange, recordId = 'temp' }:
         <View key={i} style={styles.file}>
           <Ionicons name="attach" size={14} color="#94a3b8" />
           <Text style={styles.fileName} numberOfLines={1}>{(p.split('/').pop() ?? '').replace(/^\d+-/, '')}</Text>
-          <TouchableOpacity onPress={() => remove(p)}>
-            <Ionicons name="close-circle" size={16} color="#cbd5e1" />
+          <TouchableOpacity onPress={() => remove(p)} disabled={busy}>
+            <Ionicons name="close-circle" size={16} color={busy ? '#e2e8f0' : '#cbd5e1'} />
           </TouchableOpacity>
         </View>
       ))}

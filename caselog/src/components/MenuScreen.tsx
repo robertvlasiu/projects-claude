@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface MenuItem {
   label: string;
@@ -19,9 +20,10 @@ type Props = {
 };
 
 export default function MenuScreen({ title, subtitle, items, navigation }: Props) {
+  const insets = useSafeAreaInsets();
   return (
     <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 16 }]}>
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.subtitle}>{subtitle}</Text>
       </View>
@@ -46,7 +48,7 @@ export default function MenuScreen({ title, subtitle, items, navigation }: Props
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#f8fafc' },
-  header: { paddingTop: 64, paddingHorizontal: 20, paddingBottom: 24, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
+  header: { paddingHorizontal: 20, paddingBottom: 24, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
   title: { fontSize: 28, fontWeight: '800', color: '#1e1b4b', letterSpacing: -0.5, marginBottom: 4 },
   subtitle: { fontSize: 14, color: '#94a3b8' },
   list: { padding: 20, gap: 12 },

@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { signInWithApple } from '../lib/authProviders';
 import { supabase } from '../lib/supabase';
 import { RootStackParamList } from '../types';
 
@@ -60,17 +61,11 @@ export default function LoginScreen({ navigation }: Props) {
   }
 
   async function handleApple() {
+    setError('');
     setSsoLoading('apple');
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'apple', options: { redirectTo: 'auris://auth/callback' } });
+    const { error } = await signInWithApple();
     setSsoLoading(null);
-    if (error) setError(error.message);
-  }
-
-  async function handleGoogle() {
-    setSsoLoading('google');
-    const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: 'auris://auth/callback' } });
-    setSsoLoading(null);
-    if (error) setError(error.message);
+    if (error) setError(error);
   }
 
   return (
@@ -84,25 +79,22 @@ export default function LoginScreen({ navigation }: Props) {
           <Text style={styles.tagline}>Sign in to access your case</Text>
         </Animated.View>
 
-        <Animated.View style={a1}>
-          <TouchableOpacity style={styles.appleBtn} onPress={handleApple} activeOpacity={0.85} disabled={!!ssoLoading}>
-            {ssoLoading === 'apple' ? <ActivityIndicator color="#fff" size="small" /> : <AntDesign name="apple" size={20} color="#fff" />}
-            <Text style={styles.appleBtnText}>Continue with Apple</Text>
-          </TouchableOpacity>
-        </Animated.View>
+        {Platform.OS === 'ios' && (
+          <Animated.View style={a1}>
+            <TouchableOpacity style={styles.appleBtn} onPress={handleApple} activeOpacity={0.85} disabled={!!ssoLoading}>
+              {ssoLoading === 'apple' ? <ActivityIndicator color="#fff" size="small" /> : <AntDesign name="apple" size={20} color="#fff" />}
+              <Text style={styles.appleBtnText}>Continue with Apple</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
 
-        <Animated.View style={[{ marginTop: 12 }, a2]}>
-          <TouchableOpacity style={styles.googleBtn} onPress={handleGoogle} activeOpacity={0.85} disabled={!!ssoLoading}>
-            {ssoLoading === 'google' ? <ActivityIndicator color="#1a1a1a" size="small" /> : <AntDesign name="google" size={18} color="#EA4335" />}
-            <Text style={styles.googleBtnText}>Continue with Google</Text>
-          </TouchableOpacity>
-        </Animated.View>
-
-        <Animated.View style={[styles.divider, a3]}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or use email</Text>
-          <View style={styles.dividerLine} />
-        </Animated.View>
+        {Platform.OS === 'ios' && (
+          <Animated.View style={[styles.divider, a3]}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or use email</Text>
+            <View style={styles.dividerLine} />
+          </Animated.View>
+        )}
 
         <Animated.View style={a4}>
           {error ? (
@@ -163,8 +155,6 @@ const styles = StyleSheet.create({
   tagline: { fontSize: 13, color: '#94a3b8', marginTop: 4 },
   appleBtn: { height: BTN_H, borderRadius: BTN_RADIUS, backgroundColor: '#111', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 },
   appleBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.1 },
-  googleBtn: { height: BTN_H, borderRadius: BTN_RADIUS, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, borderWidth: 1.5, borderColor: '#e2e8f0', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1 },
-  googleBtnText: { color: '#1a1a1a', fontSize: 16, fontWeight: '600', letterSpacing: 0.1 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 22 },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#e2e8f0' },
   dividerText: { fontSize: 12, color: '#aab4c4', fontWeight: '600' },

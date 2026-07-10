@@ -8,13 +8,17 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
+      "bundleIdentifier": "com.vcorp.auris",
       "supportsTablet": true,
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Auris needs access to your photos to attach evidence to incidents.",
-        "NSCameraUsageDescription": "Auris needs camera access to capture evidence photos."
+        "NSCameraUsageDescription": "Auris needs camera access to capture evidence photos.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
+      "package": "com.vcorp.auris",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -31,12 +35,6 @@
       "expo-asset",
       "expo-secure-store",
       [
-        "expo-local-authentication",
-        {
-          "faceIDPermission": "Auris uses Face ID to keep your case files private."
-        }
-      ],
-      [
         "expo-notifications",
         {
           "icon": "./assets/icon.png",
@@ -44,7 +42,14 @@
           "sounds": []
         }
       ],
-      "@react-native-community/datetimepicker"
-    ]
+      "@react-native-community/datetimepicker",
+      "expo-web-browser",
+      "expo-apple-authentication"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e03cab6d-96ae-4939-9613-d883f4aab974"
+      }
+    }
   }
 }

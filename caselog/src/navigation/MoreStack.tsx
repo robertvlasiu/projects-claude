@@ -7,6 +7,8 @@ import ExportScreen from '../screens/ExportScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import ChangePinScreen from '../screens/ChangePinScreen';
+import SubscriptionScreen from '../screens/SubscriptionScreen';
+import ContactSupportScreen from '../screens/ContactSupportScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -20,6 +22,8 @@ export default function MoreStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="ChangePin" component={ChangePinScreen} />
+      <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+      <Stack.Screen name="ContactSupport" component={ContactSupportScreen} />
     </Stack.Navigator>
   );
 }

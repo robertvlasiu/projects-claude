@@ -5,8 +5,9 @@ import DateField from '../components/DateField';
 import EmptyState from '../components/EmptyState';
 import FormModal, { Field, inputStyle, textAreaStyle } from '../components/FormModal';
 import FAB from '../components/FAB';
+import RecordActions from '../components/RecordActions';
 import ScreenHeader from '../components/ScreenHeader';
-import { useRecords } from '../hooks/useRecords';
+import { SavedRecord, useRecords } from '../hooks/useRecords';
 import { MoodEntry } from '../types';
 
 const MOODS = [
@@ -19,19 +20,57 @@ const MOODS = [
 
 const MOOD_COLORS = { 1: '#ef4444', 2: '#f97316', 3: '#f59e0b', 4: '#10b981', 5: '#4f46e5' } as Record<number, string>;
 
+const emptyForm = (): Partial<MoodEntry> => ({
+  date: new Date().toISOString().split('T')[0],
+  mood: 3,
+  energy: 3,
+});
+
 export default function MoodJournalScreen({ navigation }: any) {
-  const { records, loading, add, remove } = useRecords<MoodEntry>('mood');
+  const { records, loading, add, update, remove } = useRecords<MoodEntry>('mood');
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Partial<MoodEntry>>({ date: new Date().toISOString().split('T')[0], mood: 3, energy: 3 });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<MoodEntry>>(emptyForm());
+
+  function openNew() {
+    setEditingId(null);
+    setForm(emptyForm());
+    setModalOpen(true);
+  }
+
+  function openEdit(item: SavedRecord<MoodEntry>) {
+    const { id, created_at, ...rest } = item;
+    setEditingId(id);
+    setForm(rest);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setForm(emptyForm());
+  }
 
   async function handleSave() {
     setSaving(true);
-    const id = await add({ date: form.date || new Date().toISOString().split('T')[0], mood: form.mood ?? 3, energy: form.energy ?? 3, notes: form.notes ?? '', triggers: form.triggers ?? '' });
+    const payload = {
+      date: form.date || new Date().toISOString().split('T')[0],
+      mood: form.mood ?? 3,
+      energy: form.energy ?? 3,
+      notes: form.notes ?? '',
+      triggers: form.triggers ?? '',
+    };
+    if (editingId) {
+      await update(editingId, payload);
+      setSaving(false);
+      closeModal();
+      return;
+    }
+    const id = await add(payload);
     setSaving(false);
     if (!id) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
-    setModalOpen(false);
-    setForm({ date: new Date().toISOString().split('T')[0], mood: 3, energy: 3 });
+    closeModal();
   }
 
   const avgMood = records.length > 0 ? records.reduce((s, r) => s + r.mood, 0) / records.length : 0;
@@ -54,7 +93,7 @@ export default function MoodJournalScreen({ navigation }: any) {
         data={records}
         keyExtractor={r => r.id}
         contentContainerStyle={records.length === 0 ? styles.emptyContainer : styles.list}
-        ListEmptyComponent={!loading ? <EmptyState icon="heart-outline" title="No journal entries yet" subtitle="Check in daily. Your emotional record can matter in court." /> : null}
+        ListEmptyComponent={!loading ? <EmptyState icon="heart-outline" title="No journal entries yet" subtitle="Check in daily. Your emotional record can matter in court." actionLabel="Add a check-in" onAction={openNew} /> : null}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={[styles.moodCircle, { backgroundColor: MOOD_COLORS[item.mood] + '20' }]}>
@@ -62,7 +101,7 @@ export default function MoodJournalScreen({ navigation }: any) {
             </View>
             <View style={styles.cardBody}>
               <Text style={styles.cardDate}>{item.date}</Text>
-              {item.notes ? <Text style={styles.notes} numberOfLines={2}>{item.notes}</Text> : null}
+              {item.notes ? <Text style={styles.notes}>{item.notes}</Text> : null}
               {item.triggers ? <Text style={styles.triggers}>Triggers: {item.triggers}</Text> : null}
             </View>
             <View style={styles.cardRight}>
@@ -70,15 +109,13 @@ export default function MoodJournalScreen({ navigation }: any) {
                 <Ionicons name="flash" size={12} color="#f59e0b" />
                 <Text style={styles.energy}>{item.energy}/5</Text>
               </View>
-              <TouchableOpacity onPress={() => Alert.alert('Delete?', '', [{ text: 'Cancel' }, { text: 'Delete', style: 'destructive', onPress: () => remove(item.id) }])}>
-                <Ionicons name="trash-outline" size={14} color="#cbd5e1" />
-              </TouchableOpacity>
+              <RecordActions onEdit={() => openEdit(item)} onDelete={() => remove(item.id)} iconSize={14} />
             </View>
           </View>
         )}
       />
-      <FAB onPress={() => setModalOpen(true)} color="#ec4899" />
-      <FormModal visible={modalOpen} title="Check In" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
+      <FAB onPress={openNew} color="#ec4899" />
+      <FormModal visible={modalOpen} title={editingId ? 'Edit Check In' : 'Check In'} onClose={closeModal} onSave={handleSave} saving={saving}>
         <Field label="Date"><DateField value={form.date} onChange={v => setForm(f => ({ ...f, date: v }))} /></Field>
         <Field label="How are you feeling?">
           <View style={styles.moodRow}>

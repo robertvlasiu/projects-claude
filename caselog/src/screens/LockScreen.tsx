@@ -1,11 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import { getStoredPin } from '../lib/pin';
-import { authenticateBiometric, getBiometricSupport, isBiometricEnabled } from '../lib/security';
 
 type Props = {
+  userId: string;
   onUnlock: () => void;
 };
 
@@ -16,11 +15,9 @@ const DIGITS = [
   ['', '0', '⌫'],
 ];
 
-export default function LockScreen({ onUnlock }: Props) {
+export default function LockScreen({ userId, onUnlock }: Props) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
-  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
-  const [biometricType, setBiometricType] = useState<'face' | 'fingerprint' | null>(null);
 
   const shakeAnim = useRef(new Animated.Value(0)).current;
   const dotAnims = [
@@ -29,25 +26,6 @@ export default function LockScreen({ onUnlock }: Props) {
     useRef(new Animated.Value(1)).current,
     useRef(new Animated.Value(1)).current,
   ];
-
-  const tryBiometrics = useCallback(async () => {
-    // App-handled biometrics only — never falls back to the OS passcode prompt.
-    const ok = await authenticateBiometric('Unlock Auris');
-    if (ok) onUnlock();
-  }, [onUnlock]);
-
-  useEffect(() => {
-    async function setup() {
-      const enabled = await isBiometricEnabled();
-      if (!enabled) return; // user hasn't activated Face ID / Touch ID for their account
-      const support = await getBiometricSupport();
-      if (!support.available) return;
-      setBiometricsAvailable(true);
-      setBiometricType(support.type);
-      setTimeout(tryBiometrics, 400);
-    }
-    setup();
-  }, [tryBiometrics]);
 
   function shake() {
     Vibration.vibrate(400);
@@ -85,7 +63,7 @@ export default function LockScreen({ onUnlock }: Props) {
   }
 
   async function checkPin(entered: string) {
-    const stored = await getStoredPin();
+    const stored = await getStoredPin(userId);
     if (entered === stored) {
       onUnlock();
     } else {
@@ -94,8 +72,6 @@ export default function LockScreen({ onUnlock }: Props) {
       setPin('');
     }
   }
-
-  const biometricLabel = biometricType === 'face' ? 'Face ID' : 'Touch ID';
 
   return (
     <View style={styles.root}>
@@ -141,17 +117,6 @@ export default function LockScreen({ onUnlock }: Props) {
           </View>
         ))}
       </View>
-
-      {biometricsAvailable && (
-        <TouchableOpacity style={styles.biometricBtn} onPress={tryBiometrics}>
-          <Ionicons
-            name={biometricType === 'face' ? 'scan-outline' : 'finger-print'}
-            size={18}
-            color="#4f46e5"
-          />
-          <Text style={styles.biometricText}>Use {biometricLabel}</Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -187,6 +152,4 @@ const styles = StyleSheet.create({
   keyEmpty: { backgroundColor: 'transparent', shadowOpacity: 0, borderWidth: 0 },
   keyText: { fontSize: 24, fontWeight: '600', color: '#1e1b4b' },
   keyBackspace: { fontSize: 20 },
-  biometricBtn: { marginTop: 28, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  biometricText: { fontSize: 15, color: '#4f46e5', fontWeight: '600' },
 });

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
   title: string;
@@ -12,9 +13,10 @@ type Props = {
 export default function ScreenHeader({ title, subtitle, right }: Props) {
   const navigation = useNavigation<any>();
   const canGoBack = navigation.canGoBack();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: Math.max(insets.top, 20) + 12 }]}>
       {canGoBack ? (
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="chevron-back" size={24} color="#4f46e5" />
@@ -32,7 +34,7 @@ export default function ScreenHeader({ title, subtitle, right }: Props) {
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 12, paddingTop: 60, paddingBottom: 16,
+    paddingHorizontal: 12, paddingBottom: 16,
     backgroundColor: '#fff',
     borderBottomWidth: 1, borderBottomColor: '#f1f5f9',
   },

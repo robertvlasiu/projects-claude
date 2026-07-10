@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ScreenHeader from '../components/ScreenHeader';
 import { decrypt } from '../lib/crypto';
-import { supabase } from '../lib/supabase';
+import { getUserId, supabase } from '../lib/supabase';
 
 const EXPORT_TYPES = [
   { key: 'incident', label: 'Incident Log', icon: 'warning' as const, color: '#ef4444', bg: '#fef2f2' },
@@ -27,9 +27,9 @@ export default function ExportScreen({ navigation }: any) {
   async function handleExport() {
     if (selected.length === 0) { Alert.alert('Select at least one section to export.'); return; }
     setExporting(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setExporting(false); return; }
-    const { data } = await supabase.from('records').select('type, encrypted_data, created_at').eq('user_id', user.id).in('type', selected).order('created_at', { ascending: false });
+    const userId = await getUserId();
+    if (!userId) { setExporting(false); return; }
+    const { data } = await supabase.from('records').select('type, encrypted_data, created_at').eq('user_id', userId).in('type', selected).order('created_at', { ascending: false });
     if (!data) { setExporting(false); return; }
 
     let text = `AURIS CASE REPORT\nGenerated: ${new Date().toLocaleString()}\n${'='.repeat(50)}\n\n`;

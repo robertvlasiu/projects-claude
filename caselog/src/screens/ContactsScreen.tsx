@@ -5,8 +5,9 @@ import Chip from '../components/Chip';
 import EmptyState from '../components/EmptyState';
 import FormModal, { Field, inputStyle } from '../components/FormModal';
 import FAB from '../components/FAB';
+import RecordActions from '../components/RecordActions';
 import ScreenHeader from '../components/ScreenHeader';
-import { useRecords } from '../hooks/useRecords';
+import { SavedRecord, useRecords } from '../hooks/useRecords';
 import { Contact } from '../types';
 
 const ROLES = ['Attorney', 'Mediator', 'Judge', 'Therapist', 'School', 'Doctor', 'Financial Advisor', 'Other'];
@@ -19,20 +20,56 @@ const ROLE_COLORS: Record<string, string> = {
   School: '#10b981', Doctor: '#ef4444', 'Financial Advisor': '#f59e0b', Other: '#64748b',
 };
 
+const emptyForm = (): Partial<Contact> => ({ role: 'Attorney' });
+
 export default function ContactsScreen({ navigation }: any) {
-  const { records, loading, add, remove } = useRecords<Contact>('contact');
+  const { records, loading, add, update, remove } = useRecords<Contact>('contact');
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<Partial<Contact>>({ role: 'Attorney' });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<Partial<Contact>>(emptyForm());
+
+  function openNew() {
+    setEditingId(null);
+    setForm(emptyForm());
+    setModalOpen(true);
+  }
+
+  function openEdit(item: SavedRecord<Contact>) {
+    const { id, created_at, ...rest } = item;
+    setEditingId(id);
+    setForm(rest);
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setForm(emptyForm());
+  }
 
   async function handleSave() {
     if (!form.name?.trim()) { Alert.alert('Add a name', 'A contact needs a name.'); return; }
     setSaving(true);
-    const id = await add({ name: form.name ?? '', role: form.role ?? 'Other', phone: form.phone ?? '', email: form.email ?? '', address: form.address ?? '', firm: form.firm ?? '', notes: form.notes ?? '' });
+    const payload = {
+      name: form.name ?? '',
+      role: form.role ?? 'Other',
+      phone: form.phone ?? '',
+      email: form.email ?? '',
+      address: form.address ?? '',
+      firm: form.firm ?? '',
+      notes: form.notes ?? '',
+    };
+    if (editingId) {
+      await update(editingId, payload);
+      setSaving(false);
+      closeModal();
+      return;
+    }
+    const id = await add(payload);
     setSaving(false);
     if (!id) { Alert.alert('Could not save', 'Something went wrong. Check your connection and try again.'); return; }
-    setModalOpen(false);
-    setForm({ role: 'Attorney' });
+    closeModal();
   }
 
   return (
@@ -42,7 +79,7 @@ export default function ContactsScreen({ navigation }: any) {
         data={records}
         keyExtractor={r => r.id}
         contentContainerStyle={records.length === 0 ? styles.emptyContainer : styles.list}
-        ListEmptyComponent={!loading ? <EmptyState icon="people-outline" title="No contacts yet" subtitle="Store your attorney, mediator, therapist and more." /> : null}
+        ListEmptyComponent={!loading ? <EmptyState icon="people-outline" title="No contacts yet" subtitle="Store your attorney, mediator, therapist and more." actionLabel="Add a contact" onAction={openNew} /> : null}
         renderItem={({ item }) => (
           <View style={styles.card}>
             <View style={[styles.avatar, { backgroundColor: (ROLE_COLORS[item.role] ?? '#64748b') + '20' }]}>
@@ -63,15 +100,13 @@ export default function ContactsScreen({ navigation }: any) {
                   <Ionicons name="mail-outline" size={18} color="#4f46e5" />
                 </TouchableOpacity>
               ) : null}
-              <TouchableOpacity onPress={() => Alert.alert('Delete?', '', [{ text: 'Cancel' }, { text: 'Delete', style: 'destructive', onPress: () => remove(item.id) }])}>
-                <Ionicons name="trash-outline" size={16} color="#cbd5e1" />
-              </TouchableOpacity>
+              <RecordActions onEdit={() => openEdit(item)} onDelete={() => remove(item.id)} iconSize={16} />
             </View>
           </View>
         )}
       />
-      <FAB onPress={() => setModalOpen(true)} color="#0ea5e9" />
-      <FormModal visible={modalOpen} title="New Contact" onClose={() => setModalOpen(false)} onSave={handleSave} saving={saving}>
+      <FAB onPress={openNew} color="#0ea5e9" />
+      <FormModal visible={modalOpen} title={editingId ? 'Edit Contact' : 'New Contact'} onClose={closeModal} onSave={handleSave} saving={saving}>
         <Field label="Role">
           <View style={styles.chips}>{ROLES.map(r => <Chip key={r} label={r} selected={form.role === r} onPress={() => setForm(f => ({ ...f, role: r }))} color={ROLE_COLORS[r]} />)}</View>
         </Field>
