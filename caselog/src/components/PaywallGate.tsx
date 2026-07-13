@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SubscriptionPlans from './SubscriptionPlans';
 import { useSubscription } from '../hooks/useSubscription';
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '../lib/config';
+import { supabase } from '../lib/supabase';
 import { ENTITLEMENT_DISPLAY_NAME, STORE_TRIAL_DAYS, restorePurchases } from '../lib/subscription';
 
 const FEATURES = [
@@ -122,6 +123,11 @@ function SubscribePaywall({
             <Text style={styles.restoreText}>Restore purchases</Text>
           )}
         </TouchableOpacity>
+
+        <TouchableOpacity style={styles.signOutBtn} onPress={() => supabase.auth.signOut()}>
+          <Ionicons name="log-out-outline" size={16} color="#ef4444" />
+          <Text style={styles.signOutText}>Log Out</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -163,4 +169,12 @@ const styles = StyleSheet.create({
   },
   restoreBtn: { alignItems: 'center', paddingVertical: 18 },
   restoreText: { fontSize: 14, color: '#4f46e5', fontWeight: '600' },
+  signOutBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+  },
+  signOutText: { fontSize: 13, color: '#ef4444', fontWeight: '600' },
 });
